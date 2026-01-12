@@ -1,0 +1,174 @@
+.show-items-container {
+    width: 100%;
+    padding: 10px;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.show-items-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 30px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+}
+
+.show-items-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.header-info h2 { font-size: 24px; color: #1e293b; margin: 0; }
+.header-info p { color: #64748b; font-size: 14px; margin: 4px 0 0 0; }
+
+.header-btns {
+    display: flex;
+    gap: 12px;
+}
+
+/* Download Buttons */
+.download-btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.excel-btn { background-color: #dcfce7; color: #15803d; }
+.excel-btn:hover { background-color: #bbf7d0; }
+
+.pdf-btn { background-color: #fee2e2; color: #b91c1c; }
+.pdf-btn:hover { background-color: #fecaca; }
+
+/* Table Wrapper */
+.show-items-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+}
+
+.show-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.show-items-table th {
+    background: #f8fafc;
+    padding: 16px;
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.show-items-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: #334155;
+}
+
+.cat-badge {
+    background: #eff6ff;
+    color: #3b82f6;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.btn-edit {
+    background-color: #6366f1;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- PASTE AT THE BOTTOM OF showAddedItems.css --- */
+
+@media (max-width: 768px) {
+    /* 1. Stack Main Header Vertically */
+    .show-items-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+        padding-bottom: 20px;
+    }
+
+    /* 2. Stack Title and Filter Group */
+    .header-info {
+        flex-direction: column;
+        align-items: flex-start !important; /* Overrides inline style */
+        width: 100%;
+        gap: 15px !important;
+    }
+
+    /* 3. Stack Filters (Dropdown & Stock Input) */
+    .filter-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px !important;
+    }
+
+    /* 4. Make Inputs Full Width */
+    .filter-select, 
+    .filter-input {
+        width: 100% !important; /* Force full width */
+        padding: 12px !important; /* Larger touch area */
+        font-size: 16px;
+    }
+
+    /* 5. Stack Download Buttons */
+    .header-btns {
+        width: 100%;
+        display: flex;
+        flex-direction: column; /* Stack Excel on top of PDF */
+        gap: 10px;
+    }
+
+    .download-btn {
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+    }
+
+    /* 6. Adjust Card Padding */
+    .show-items-card {
+        padding: 15px;
+    }
+
+    .show-items-container {
+        padding: 10px;
+    }
+
+    /* 7. Table Scrolling */
+    .show-items-table-wrapper {
+        width: 100%;
+        overflow-x: auto; /* Enable scroll */
+        border: 1px solid #f1f5f9;
+        border-radius: 8px;
+    }
+
+    /* Force wide table so columns don't squish */
+    .show-items-table {
+        min-width: 1100px; /* This table has many columns, needs more space */
+    }
+}
+

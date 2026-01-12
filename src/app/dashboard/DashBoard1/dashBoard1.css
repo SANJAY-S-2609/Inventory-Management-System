@@ -1,0 +1,369 @@
+/* Layout Engine - Locks everything to the screen */
+.inventory-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Important: Fills DashBoard shell */
+  width: 100%;
+  overflow: hidden; /* REMOVES GLOBAL SCROLL */
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.dashboard-header h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+/* 1. Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 25px;
+  flex-shrink: 0; /* Prevents shrinking */
+}
+
+.stat-card {
+  padding: 24px;
+  border-radius: 24px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card.purple { background-color: #6366f1; }
+.stat-card.red { background-color: #f43f5e; }
+.stat-card.blue { background-color: #0ea5e9; }
+
+.card-info span { font-size: 14px; opacity: 0.9; }
+.card-info h2 { font-size: 42px; font-weight: 800; margin: 5px 0 0; }
+.card-badge { background: rgba(255, 255, 255, 0.2); padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+
+/* 2. Main Content Grid */
+.main-content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  flex: 1; /* Takes all remaining height */
+  min-height: 0; /* Critical for inner scrolling child */
+}
+
+/* Left Card: Chart */
+.analytics-card {
+  background: white;
+  border-radius: 28px;
+  padding: 30px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.analytics-header h3 { font-size: 22px; color: #1e293b; margin: 0; }
+
+/* Toggle Pill Buttons */
+.toggle-btns { background: #f1f5f9; padding: 4px; border-radius: 10px; display: flex; gap: 4px; }
+.toggle-btns button {
+  border: none; padding: 8px 18px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s;
+}
+.toggle-btns button.active { background: #6366f1; color: white; }
+
+.legend { display: flex; gap: 20px; font-size: 13px; color: #64748b; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.dot.blue { background-color: #6366f1; }
+.dot.pink { background-color: #f43f5e; }
+
+/* Bar Scaling area */
+.chart-container {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+.bars { display: flex; gap: 10px; align-items: flex-end; height: 85%; width: 100%; justify-content: center; }
+
+.bar {
+  width: 18px;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.5s ease;
+}
+.b-blue { background-color: #6366f1; }
+.b-pink { background-color: #f43f5e; }
+
+.day-label { margin-top: 15px; font-size: 12px; color: #94a3b8; font-weight: 700; }
+
+/* 3. Alerts Column */
+.alerts-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow: hidden; /* Prevent column itself from scrolling */
+}
+
+.alert-card {
+  background: white;
+  border-radius: 28px;
+  padding: 25px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.alert-card.out-of-stock {
+  border-left: 6px solid #f43f5e;
+  flex-shrink: 0;
+  height: 150px;
+}
+
+/* THE LOW STOCK SCROLL BEHAVIOR */
+.alert-card.low-stock {
+  border-left: 6px solid #f59e0b;
+  flex: 1; /* Makes card stretch to bottom */
+  min-height: 0; 
+  overflow: hidden;
+}
+
+.alert-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.alert-header h4 { font-size: 16px; font-weight: 800; color: #1e293b; margin: 0; }
+
+.low-stock-list {
+  flex: 1;
+  overflow-y: auto; /* ENABLES SCROLL ONLY IN THIS BOX */
+  padding-right: 8px;
+}
+
+/* Custom Scrollbar for list */
+.low-stock-list::-webkit-scrollbar { width: 5px; }
+.low-stock-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f8fafc;
+  font-size: 14px;
+}
+
+.list-item strong { color: #1e293b; font-weight: 700; }
+.status-val { display: flex; gap: 5px; align-items: center; }
+.text-red { color: #f43f5e; font-weight: 800; }
+.text-left { color: #64748b; font-size: 12px; }
+
+.loading-screen { display: flex; justify-content: center; align-items: center; height: 100%; font-weight: 700; color: #6366f1; }
+
+/* Previous UI logic remains same, adding Tooltip logic */
+
+.bar {
+  width: 18px;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.5s ease, transform 0.2s ease;
+  cursor: pointer;
+  position: relative; /* Required for tooltip positioning */
+}
+
+.bar:hover {
+  transform: scaleX(1.1);
+  filter: brightness(1.1);
+}
+
+/* Tooltip Styling */
+.bar-tooltip {
+  visibility: hidden;
+  background-color: #1e293b;
+  color: #fff;
+  text-align: center;
+  padding: 5px 10px;
+  border-radius: 6px;
+  position: absolute;
+  z-index: 10;
+  bottom: 105%; /* Position above the bar */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s, visibility 0.3s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Arrow for Tooltip */
+.bar-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1e293b transparent transparent transparent;
+}
+
+/* Show tooltip on hover */
+.bar:hover .bar-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Color definitions for bars */
+.bar-blue { background-color: #6366f1; }
+.bar-pink { background-color: #f43f5e; }
+
+/* Rest of your existing CSS below ... */
+
+.inventory-dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  padding: 25px;
+  border-radius: 20px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-card.purple { background-color: #6366f1; }
+.stat-card.red { background-color: #f43f5e; }
+.stat-card.blue { background-color: #0ea5e9; }
+
+.main-content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.analytics-card {
+  background: white;
+  border-radius: 24px;
+  padding: 30px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-area {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  border-bottom: 1.5px solid #f1f5f9;
+  padding-bottom: 10px;
+}
+
+.chart-column { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+.bar-pair { display: flex; gap: 8px; align-items: flex-end; height: 85%; width: 100%; justify-content: center; }
+
+.low-stock-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 15px;
+  padding-right: 8px;
+}
+
+.low-stock-scroll-area::-webkit-scrollbar { width: 5px; }
+.low-stock-scroll-area::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+.low-stock-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f8fafc;
+  font-size: 14px;
+}
+
+/* Enable scrolling for Out of Stock content */
+.out-of-stock-content {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 10px;
+  padding-right: 8px;
+}
+
+/* Add scrollbar styling for consistency */
+.out-of-stock-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.out-of-stock-content::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+/* Optional: style the items inside for better readability */
+.out-of-stock-content p {
+  margin: 8px 0;
+  font-size: 14px;
+  border-bottom: 1px solid #f8fafc;
+  padding-bottom: 5px;
+}
+
+@media (max-width: 1024px) {
+  /* Stack Main Grid (Charts top, Alerts bottom) */
+  .main-content-grid {
+    grid-template-columns: 1fr; 
+    height: auto; /* Allow scrolling */
+  }
+  
+  /* Allow the page to scroll vertically */
+  .inventory-dashboard {
+    overflow-y: auto; 
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Stack Stats Cards */
+  .stats-grid {
+    grid-template-columns: 1fr; /* 1 column instead of 3 */
+  }
+  
+  .stat-card {
+    margin-bottom: 10px;
+  }
+  
+  /* Fix Chart Bars sizing */
+  .bar { width: 10px; }
+  .chart-area { overflow-x: auto; } /* Scroll chart if needed */
+  
+  /* Stack Alerts */
+  .alerts-column {
+    height: auto;
+  }
+  .alert-card.low-stock {
+    max-height: 400px;
+  }
+}
+

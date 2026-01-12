@@ -1,0 +1,175 @@
+/* =========================================
+   1. VARIABLES & RESET
+   ========================================= */
+:root {
+  --sidebar-w: 260px;
+  --header-h: 70px;
+  --bg-page: #f4f7fe;
+  --primary: #6366f1;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+/* =========================================
+   2. DESKTOP LAYOUT (Default)
+   ========================================= */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bg-page);
+  overflow: hidden;
+}
+
+/* Sidebar (Desktop) */
+.app-sidebar {
+  width: var(--sidebar-w);
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  flex-shrink: 0;
+  transition: all 0.3s ease; /* Smooth transition for everything */
+  z-index: 50;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+.logo-box { background: var(--primary); padding: 8px; border-radius: 8px; color: #fff; }
+.logo-text { font-size: 24px; font-weight: 800; color: #1e293b; }
+
+.nav-menu { flex: 1; }
+.nav-item {
+  padding: 14px 16px;
+  margin-bottom: 5px;
+  border-radius: 10px;
+  color: #64748b;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.nav-item.active, .nav-item:hover { background: #eff6ff; color: var(--primary); font-weight: 600; }
+
+.logout-button {
+  background: #fee2e2;
+  color: #ef4444;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Main Content Area */
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+.content-area {
+  padding: 30px 40px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Mobile Elements (Hidden on Desktop) */
+.mobile-header { display: none; }
+.menu-toggle { display: none; }
+.sidebar-overlay { display: none; }
+
+
+/* =========================================
+   3. MOBILE LAYOUT (Max-width: 768px)
+   ========================================= */
+@media (max-width: 768px) {
+  
+  /* --- A. MOBILE HEADER --- */
+  .mobile-header {
+    display: flex !important;
+    justify-content: flex-start;
+    align-items: center;
+    padding-left: 20px;
+    height: 60px;
+    width: 100%;
+    background-color: #ffffff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 3000; /* Highest layer */
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  /* Show the Hamburger Button */
+  .menu-toggle {
+    display: flex !important;
+    width: 40px;
+    height: 40px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  /* Hamburger Bars Styling */
+  .menu-toggle .bar {
+    width: 100%; height: 2px; background-color: #1e293b; border-radius: 4px;
+    transition: all 0.4s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+  }
+  .menu-toggle .bar.half { width: 100%; }
+  .menu-toggle .bar.start { transform-origin: right; align-self: flex-end; }
+  .menu-toggle .bar.end { transform-origin: left; align-self: flex-start; }
+
+  /* Hamburger Animation (X Shape) */
+  .menu-toggle.open .bar:nth-child(2) { transform: rotate(360deg); opacity: 0; }
+  .menu-toggle.open .bar.start { transform-origin: center; transform: rotate(45deg) translate(5px, 5px); width: 100%; background-color: #ef4444; }
+  .menu-toggle.open .bar.end { transform-origin: center; transform: rotate(-45deg) translate(5px, -5px); width: 100%; background-color: #ef4444; }
+
+
+  /* --- B. SIDEBAR AS DRAWER (The Fix) --- */
+  .app-sidebar {
+    position: fixed !important; /* FLOATS on top */
+    top: 0;
+    left: -280px; /* Hidden by default */
+    height: 100vh;
+    width: 260px;
+    background: #ffffff;
+    z-index: 2000;
+    padding-top: 80px; /* Space for logo */
+    box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+  }
+
+  /* SLIDE IN CLASS */
+  .app-sidebar.open {
+    left: 0 !important; /* Move onto screen */
+  }
+
+  /* Ensure Logo is visible inside sidebar */
+  .app-sidebar .brand {
+    display: flex !important;
+    margin-top: 0;
+  }
+
+  /* --- C. LAYOUT ADJUSTMENTS --- */
+  .main-container {
+    padding-top: 60px; /* Push content below header */
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+  
+  .content-area {
+    padding: 15px; /* Less padding on mobile */
+  }
+
+  /* --- D. OVERLAY --- */
+  .sidebar-overlay {
+    display: block !important;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 1500;
+    backdrop-filter: blur(2px);
+  }
+}

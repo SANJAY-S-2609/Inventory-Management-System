@@ -1,0 +1,191 @@
+/* --- MAIN CONTAINER --- */
+.ind-item-container {
+    width: 100%;
+    padding: 10px;
+    animation: fadeIn 0.4s ease-out;
+    box-sizing: border-box;
+}
+
+.ind-item-card {
+    background: #ffffff;
+    border-radius: 20px; /* Consistent with Stock Reg */
+    padding: 30px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+/* --- HEADER SECTION --- */
+.ind-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap; /* Allows wrapping on mobile */
+    gap: 15px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 20px;
+}
+
+.ind-header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ind-icon {
+    font-size: 28px;
+    background: #f1f5f9;
+    padding: 10px;
+    border-radius: 12px;
+}
+
+.ind-header-left h2 {
+    font-size: 24px;
+    color: #1e293b;
+    margin: 0;
+}
+
+.ind-header-left p {
+    color: #64748b;
+    font-size: 14px;
+    margin: 4px 0 0;
+}
+
+/* --- ACTION BUTTONS --- */
+.ind-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.ind-btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.ind-excel { background-color: #dcfce7; color: #15803d; }
+.ind-excel:hover { background-color: #bbf7d0; transform: translateY(-1px); }
+
+.ind-pdf { background-color: #fee2e2; color: #b91c1c; }
+.ind-pdf:hover { background-color: #fecaca; transform: translateY(-1px); }
+
+/* --- TABLE STYLING --- */
+.ind-table-wrapper {
+    overflow-x: auto; /* Essential for mobile */
+    border-radius: 12px;
+    border: 1px solid #f1f5f9;
+    width: 100%;
+}
+
+.modern-ind-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    table-layout: fixed; /* Respects defined column widths */
+}
+
+.modern-ind-table th {
+    background: #f8fafc;
+    padding: 16px;
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.modern-ind-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: #334155;
+}
+
+/* --- COLUMN WIDTHS (Consistency Fix) --- */
+.modern-ind-table th:nth-child(1), 
+.modern-ind-table td:nth-child(1) { width: 110px; } /* Date */
+
+.modern-ind-table th:nth-child(2), 
+.modern-ind-table td:nth-child(2) { 
+    width: 250px; 
+    white-space: normal; 
+    word-break: break-word; 
+} /* Item Name */
+
+.modern-ind-table th:nth-child(3), 
+.modern-ind-table td:nth-child(3) { width: 120px; } /* HSN */
+
+/* --- FOOTER / TOTAL ROW --- */
+.ind-total-row {
+    background-color: #f8fafc;
+}
+
+.ind-total-row td {
+    padding: 18px;
+    font-weight: 800;
+    color: #1e293b;
+    border-top: 2px solid #e2e8f0;
+}
+
+.ind-grand-total {
+    color: #10b981 !important; /* Green */
+    font-size: 16px !important;
+}
+
+/* --- RESPONSIVE MEDIA QUERIES --- */
+
+@media (max-width: 768px) {
+    .ind-item-card {
+        padding: 20px;
+    }
+
+    .ind-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .ind-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .ind-header-left h2 {
+        font-size: 20px;
+    }
+
+    /* Force table to have enough room to scroll on tiny screens */
+    .modern-ind-table {
+        min-width: 650px; 
+    }
+}
+
+@media (max-width: 480px) {
+    .ind-actions {
+        flex-direction: column; /* Stack buttons on very small phones */
+    }
+    
+    .ind-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+.back-btn {
+    background: white;
+    border: 1px solid #e2e8f0;
+    padding: 10px 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,170 @@
+/* Additem.css */
+
+/* Global Reset for the page context */
+.add-item-container {
+    padding: 20px;
+    background-color: #f8fafc; /* Matches dashboard background */
+    min-height: calc(100vh - 100px);
+    display: flex;
+    justify-content: center;
+}
+
+/* The main form card */
+.bg-white.shadow-lg {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px !important; /* Smooth rounded corners */
+    padding: 40px !important;
+    transition: transform 0.3s ease;
+}
+
+/* Header section */
+.add-item-container h2 {
+    color: #1e293b;
+    font-size: 24px;
+    letter-spacing: -0.5px;
+}
+
+/* Custom Database Connection Badges */
+.badge.bg-success {
+    background-color: #dcfce7 !important;
+    color: #15803d !important;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.badge.bg-danger {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* Labels */
+.form-label {
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600 !important;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Input Fields & Selects */
+.form-control, .form-select {
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 12px 15px !important;
+    font-size: 14px !important;
+    color: #1e293b !important;
+    background-color: #ffffff !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+/* Input Focus States */
+.form-control:focus, .form-select:focus {
+    border-color: #6366f1 !important; /* Indigo Blue */
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+    background-color: #fff !important;
+    outline: none !important;
+}
+
+/* Readonly/Calculated Fields Styling */
+.form-control.bg-light {
+    background-color: #f1f5f9 !important; /* Light grey */
+    border-color: #cbd5e1 !important;
+    cursor: not-allowed;
+    color: #64748b !important;
+}
+
+.form-control.fw-bold {
+    color: #6366f1 !important; /* Highlight total amount */
+    font-size: 16px;
+}
+
+/* Button Styling */
+.btn-primary {
+    background-color: #6366f1 !important;
+    border: none !important;
+    padding: 12px 30px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
+}
+
+.btn-primary:hover {
+    background-color: #4f46e5 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:disabled {
+    background-color: #94a3b8 !important;
+    transform: none;
+    cursor: not-allowed;
+}
+
+.btn-outline-secondary {
+    border: 1.5px solid #e2e8f0 !important;
+    color: #64748b !important;
+    padding: 12px 30px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s !important;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #f8fafc !important;
+    color: #1e293b !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Spacing and Borders */
+.border-top {
+    border-color: #f1f5f9 !important;
+    border-top: 2px solid #f1f5f9 !important;
+}
+
+/* Animation on mount */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.bg-white.shadow-lg {
+    animation: slideIn 0.4s ease-out;
+}
+@media (max-width: 768px) {
+  /* Force Grid Forms to Stack */
+  .form-row, .row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+  
+  /* Bootstrap Override */
+  .col-md-4, .col-md-3, .col-md-6, .col-md-12 {
+    width: 100% !important;
+  }
+  
+  /* Adjust Cards */
+  .form-container-full, 
+  .bg-white.shadow-lg,
+  .distribute-form-card {
+    padding: 20px !important;
+  }
+  
+  /* Buttons */
+  .form-actions, 
+  .d-flex.justify-content-end {
+    flex-direction: column-reverse; /* Put primary button on top */
+    gap: 10px;
+  }
+  
+  .btn, button {
+    width: 100%; /* Full width buttons */
+  }
+}
+

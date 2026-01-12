@@ -1,0 +1,208 @@
+/* ==========================================================================
+   MAIN CONTAINER & CARD
+   ========================================================================== */
+.stock-reg-container {
+    width: 100%;
+    padding: 20px;
+    background-color: #f8fafc; /* Soft background */
+    min-height: 100vh;
+    animation: fadeIn 0.4s ease-out;
+    box-sizing: border-box;
+}
+
+.stock-reg-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 30px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Header Styling --- */
+.reg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.header-left h2 {
+    font-size: 26px;
+    color: #1e293b;
+    margin: 0;
+    font-weight: 800;
+}
+
+.header-left p {
+    color: #64748b;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   TABLE STYLING (STICKY HEADER LOGIC)
+   ========================================================================== */
+.reg-table-wrapper {
+    /* Enable vertical scrolling within the card */
+    max-height: 60vh; 
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #f1f5f9;
+    position: relative;
+    margin-bottom: 20px;
+}
+
+/* Modern Scrollbar Styling */
+.reg-table-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.reg-table-wrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.modern-reg-table {
+    width: 100%;
+    border-collapse: separate; /* Essential for sticky headers */
+    border-spacing: 0;
+    text-align: left;
+}
+
+/* --- THE STICKY TH --- */
+.modern-reg-table thead th {
+    position: sticky;
+    top: 0; /* Keeps header locked at top of the wrapper */
+    background: #f8fafc; /* Must match wrapper/card background */
+    z-index: 10;
+    padding: 16px;
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+/* --- TABLE CELLS --- */
+.modern-reg-table td {
+    padding: 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: #334155;
+    background: #ffffff;
+}
+
+/* Column Width Control */
+.modern-reg-table th:nth-child(1) { width: 60px; }  /* S.No */
+.modern-reg-table th:nth-child(2) { width: 300px; } /* Item Name */
+.modern-reg-table th:nth-child(3) { width: 120px; } /* HSN */
+
+/* --- INTERACTIVE ROWS --- */
+.clickable-row {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.clickable-row:hover td {
+    background-color: #f0f4ff !important; /* Soft Indigo highlight */
+}
+
+.item-name-cell {
+    color: #4f46e5;
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   SUMMARY SECTION (MATCHING "ID DETAILS" DARK THEME)
+   ========================================================================== */
+.summary-section {
+    display: flex;
+    justify-content: flex-end; /* Align box to the right */
+    margin-top: 35px;
+}
+
+.summary-box {
+    width: 400px;
+    background: #eceef2; /* Dark Navy Theme */
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    color: #ffffff;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: #94a3b8; /* Dimmed secondary text */
+}
+
+.summary-row span:last-child {
+    font-weight: 700;
+    color: #201f1f; /* Bright white values */
+}
+
+/* Total Emphasis Row (Bottom of box) */
+.total-cost {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid #334155;
+}
+
+.total-cost span:first-child {
+    font-size: 15px;
+    font-weight: 800;
+    color: #212020;
+}
+
+.total-cost span:last-child {
+    font-size: 24px;
+    font-weight: 900;
+    color: #10b981; /* Grand Total Green */
+}
+
+/* ==========================================================================
+   UTILITIES & ANIMATIONS
+   ========================================================================== */
+.text-green { color: #10b981 !important; }
+.text-indigo { color: #6366f1 !important; }
+.text-red { color: #ef4444 !important; }
+.fw-bold { font-weight: 800; }
+.text-center { text-align: center; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .summary-box { width: 350px; }
+}
+
+@media (max-width: 768px) {
+    .reg-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .modern-reg-table {
+        min-width: 850px; /* Enable horizontal scroll on tiny screens */
+    }
+
+    .summary-section {
+        justify-content: center; /* Center total box on small phones */
+    }
+
+    .summary-box {
+        width: 100%;
+    }
+}
