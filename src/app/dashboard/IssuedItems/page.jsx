@@ -112,8 +112,8 @@ const fetchItems = async (search = "") => {
                 <th>Item Name</th>
                 <th>Unit</th>
                 <th>Category</th>
-                <th>Total Stock</th>
-                <th>Distributed</th>
+                {/* <th>Total Stock</th>
+                <th>Distributed</th> */}
                 <th>Remaining</th>
                 <th>Action</th>
               </tr>
@@ -129,11 +129,11 @@ const fetchItems = async (search = "") => {
                     <td className="item-name" >{item.name}</td>
                     <td>{item.unit}</td>
                     <td>{item.category}</td>
-                    <td>{item.quantity}</td>
-                    <td className="distributed" style={{ color: "orange", fontWeight: "bold" }}>
+                    {/* <td>{item.quantity}</td> */}
+                    {/* <td className="distributed" style={{ color: "orange", fontWeight: "bold" }}>
                         {item.distributed}
-                    </td>
-                    <td className="remaining" style={{ color: item.remaining < 5 ? "red" : "green", fontWeight: "bold" }}>
+                    </td> */}
+                    <td className="remaining">
                         {item.remaining}
                     </td>
                     <td>

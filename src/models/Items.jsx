@@ -14,6 +14,12 @@ const ItemsSchema  = new mongoose.Schema(
       trim: true,
     },
 
+    // minOrderLevel: {
+    //   type: Number,
+    //   required: true,
+    //   min: 0,
+    // },
+
     category: {
       type: String,
       required: true,

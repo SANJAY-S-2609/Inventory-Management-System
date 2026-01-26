@@ -1,35 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ReviewItems() {
   const router = useRouter();
 
-  // --- STATE INITIALIZATION (Lazy Initializers to avoid render warnings) ---
-  
-  const [items, setItems] = useState(() => {
-    if (typeof window !== "undefined") {
-      // Corrected key to match the AddItem page logic
-      const savedItems = localStorage.getItem("pending_batch_items");
-      return savedItems ? JSON.parse(savedItems) : [];
-    }
-    return [];
-  });
-
-  const [supplier, setSupplier] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedSup = localStorage.getItem("pending_supplier");
-      return savedSup ? JSON.parse(savedSup) : {};
-    }
-    return {};
-  });
-
+  // --- 1. STATE INITIALIZATION (Starts empty to prevent Hydration Error) ---
+  const [items, setItems] = useState([]);
+  const [supplier, setSupplier] = useState({});
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // --- ACTIONS ---
+  // --- 2. CLIENT-SIDE LOADING (Runs once on mount) ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedItems = localStorage.getItem("pending_batch_items");
+      const savedSup = localStorage.getItem("pending_supplier");
+      if (savedItems) setItems(JSON.parse(savedItems));
+      if (savedSup) setSupplier(JSON.parse(savedSup));
+      setMounted(true);
+    }
+  }, []);
 
+  // Define isOther here so it's accessible to the JSX below
+  const isOther = supplier?.supplierId === "OTHER";
+
+  // --- ACTIONS (Original Logics Preserved) ---
   const discardItem = (tid) => {
     const filtered = items.filter((i) => i.tempId !== tid);
     setItems(filtered);
@@ -37,9 +35,15 @@ export default function ReviewItems() {
   };
 
   const handleFinalSave = async () => {
-    if (!invoiceNumber.trim()) {
-      alert("Please enter a valid Invoice Number to complete the purchase.");
+    let finalInvoice = invoiceNumber.trim();
+
+    if (!isOther && !finalInvoice) {
+      alert("Please enter an Invoice Number.");
       return;
+    }
+
+    if (isOther && !finalInvoice) {
+      finalInvoice = `CASH-${Date.now().toString().slice(-8)}`;
     }
 
     if (items.length === 0) {
@@ -52,12 +56,11 @@ export default function ReviewItems() {
       const res = await fetch("/api/BulkSaveItems", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceNumber, supplier, items }),
+        body: JSON.stringify({ invoiceNumber: finalInvoice, supplier, items }),
       });
 
       if (res.ok) {
-        alert("All items and Invoice details saved successfully! ✅");
-        // Clear storage only after successful DB save
+        alert("Saved successfully! ✅");
         localStorage.removeItem("pending_batch_items");
         localStorage.removeItem("pending_supplier");
         router.push("/dashboard/ShowAddedItems");
@@ -73,13 +76,23 @@ export default function ReviewItems() {
     }
   };
 
+  // Prevent rendering until client hydration is complete
+  if (!mounted) return null;
+
   return (
     <div className="container py-5">
       <div className="card shadow-lg border-0 rounded-4 p-4 bg-white">
         <div className="mb-4 border-bottom pb-3">
           <h2 className="fw-bold text-dark">Review Purchase Items</h2>
           <p className="text-muted mb-0">
-            Supplier: <span className="fw-bold text-primary">{supplier.companyName || "Not Selected"}</span>
+            Supplier:{" "}
+            <span className="fw-bold text-primary">
+              {supplier.companyName || "Not Selected"}
+            </span>
+          </p>
+          <p className="text-muted">
+            Purchase Date:{" "}
+            <span className="fw-bold">{supplier.purchaseDate || "Today"}</span>
           </p>
         </div>
 
@@ -108,8 +121,14 @@ export default function ReviewItems() {
                       </button>
                     </td>
                     <td className="fw-semibold">{item.name}</td>
-                    <td><span className="badge bg-secondary opacity-75">{item.category}</span></td>
-                    <td>{item.quantity} {item.unit}</td>
+                    <td>
+                      <span className="badge bg-secondary opacity-75">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td>
+                      {item.quantity} {item.unit}
+                    </td>
                     <td className="text-end fw-bold text-success">
                       ₹{parseFloat(item.totalAmount).toLocaleString()}
                     </td>
@@ -126,7 +145,6 @@ export default function ReviewItems() {
           </table>
         </div>
 
-        {/* ADD MORE BUTTON */}
         <div className="mt-3">
           <button
             className="btn btn-outline-primary fw-bold rounded-3"
@@ -136,33 +154,41 @@ export default function ReviewItems() {
           </button>
         </div>
 
-        {/* FINAL INVOICE SECTION */}
-        <div className="mt-5 p-4 rounded-4" style={{ backgroundColor: "#f8f9fa", border: "1px dashed #dee2e6" }}>
+        {/* FINAL SAVE SECTION */}
+        <div
+          className="mt-5 p-4 rounded-4"
+          style={{ backgroundColor: "#f8f9fa", border: "1px dashed #dee2e6" }}
+        >
           <h4 className="fw-bold mb-3">Finalize & Save</h4>
           <div className="row align-items-end g-3">
-            <div className="col-md-6">
-              <label className="form-label fw-medium">Invoice Number / Bill No.</label>
-              <input
-                type="text"
-                className="form-control form-control-lg border-2"
-                placeholder="Enter Invoice Number"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-              />
-            </div>
-            <div className="col-md-6">
+            
+            {/* Show Invoice field only if it is NOT a Cash/Other purchase */}
+            {!isOther && (
+              <div className="col-md-6">
+                <label className="form-label fw-bold">Invoice Number</label>
+                <input
+                  type="text"
+                  className="form-control form-control-lg border-2"
+                  placeholder="Enter Invoice Number"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* Save Button */}
+            <div className={isOther ? "col-md-12" : "col-md-6"}>
               <button
                 className="btn btn-success btn-lg w-100 fw-bold shadow-sm"
                 onClick={handleFinalSave}
                 disabled={isSaving || items.length === 0}
               >
-                {isSaving ? "Saving to Database..." : "Confirm & Save to Database"}
+                {isSaving
+                  ? "Saving to Database..."
+                  : "✅ Confirm & Save to Database"}
               </button>
             </div>
           </div>
-          <small className="text-muted d-block mt-3">
-            * Items will not be saved to the database until an invoice number is provided and confirmed.
-          </small>
         </div>
       </div>
     </div>

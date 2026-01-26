@@ -7,6 +7,7 @@ function Additem() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const itemId = searchParams.get("itemId");
+  const newSupplierIdFromUrl = searchParams.get("newSupplierId"); // Get ID back from redirect
 
   // State to track field errors
   const [errors, setErrors] = useState({});
@@ -17,12 +18,15 @@ function Additem() {
 
   const [supplierList, setSupplierList] = useState([]);
 
+  // Helper to get today's date in YYYY-MM-DD format
+  const getTodayDate = () => new Date().toISOString().split("T")[0];
+
   const [formData, setFormData] = useState({
     hsnSac: "",
     name: "",
     category: "",
     quantity: "",
-    minOrderLevel: "", // ✅ Initialized
+    minOrderLevel: "",
     unit: "",
     perItemPrice: "",
     originalPrice: "",
@@ -33,16 +37,72 @@ function Additem() {
     discountPrice: "",
     companyName: "",
     companyNumber: "",
+    // Initialize with today's date
+    purchaseDate: getTodayDate(),
   });
 
+// 1. SAFE EFFECT: Handle returning from Add Supplier
+useEffect(() => {
+  if (newSupplierIdFromUrl && supplierList?.length > 0) {
+    const draft = localStorage.getItem("item_form_draft");
+    if (draft) {
+      try {
+        const parsedDraft = JSON.parse(draft);
+        const newSup = supplierList.find(
+          (s) => s?.supplierId === newSupplierIdFromUrl
+        );
+
+        if (newSup) {
+          // Define supplierData first so it can be used below
+          const supplierData = {
+            supplierId: newSup.supplierId,
+            companyName: newSup.companyName,
+            companyNumber: newSup.companyNumber || newSup.supplierMobileNumber,
+          };
+
+          // Update the form: Draft + New Supplier info
+          setFormData((prev) => ({
+            ...prev,
+            ...parsedDraft,
+            ...supplierData,
+          }));
+
+          // Sync pending_supplier for your batch adding logic
+          localStorage.setItem("pending_supplier", JSON.stringify({
+            ...supplierData,
+            purchaseDate: parsedDraft.purchaseDate || getTodayDate()
+          }));
+
+          // Clean up
+          localStorage.removeItem("item_form_draft");
+          
+          // Use router.replace to remove the ID from the URL bar 
+          // (prevents this from running again if you refresh)
+          router.replace("/dashboard/Additem"); 
+        }
+      } catch (e) {
+        console.error("Error parsing draft:", e);
+      }
+    }
+  }
+}, [newSupplierIdFromUrl, supplierList, router]);
+  // Inside Additem.jsx
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
         const res = await fetch("/api/Supplier");
         const data = await res.json();
-        setSupplierList(data);
+
+        // Safety check: Ensure data is an array to prevent .find() crashes
+        if (Array.isArray(data)) {
+          setSupplierList(data);
+        } else {
+          console.error("Expected array from API, got:", data);
+          setSupplierList([]); // Fallback to empty array
+        }
       } catch (err) {
         console.error("Error fetching suppliers", err);
+        setSupplierList([]);
       }
     };
     fetchSuppliers();
@@ -58,7 +118,11 @@ function Additem() {
             ...data,
             perItemPrice: data.perItemPrice || "",
             gstPercentage: data.gstPercentage || "",
-            minOrderLevel: data.minOrderLevel || "", // ✅ Load existing value in Edit Mode
+            minOrderLevel: data.minOrderLevel || "",
+            // If editing, use saved date or today
+            purchaseDate: data.purchaseDate
+              ? data.purchaseDate.split("T")[0]
+              : getTodayDate(),
           });
         } catch (err) {
           console.error("Failed to fetch item:", err);
@@ -66,33 +130,88 @@ function Additem() {
       };
       fetchItem();
     } else {
-      const urlSid = searchParams.get("supplierId");
-      const urlCName = searchParams.get("companyName");
-      const urlCPhone = searchParams.get("companyNumber");
-      const savedSupplier = JSON.parse(
-        localStorage.getItem("pending_supplier")
-      );
+    const urlSid = searchParams.get("supplierId");
+    const urlCName = searchParams.get("companyName");
+    const urlCPhone = searchParams.get("companyNumber");
 
-      if (urlSid) {
-        setFormData((prev) => ({
-          ...prev,
-          supplierId: urlSid,
-          companyName: urlCName,
-          companyNumber: urlCPhone,
-        }));
-      } else if (savedSupplier) {
-        setFormData((prev) => ({
-          ...prev,
-          supplierId: savedSupplier.supplierId,
-          companyName: savedSupplier.companyName,
-          companyNumber: savedSupplier.companyNumber,
-        }));
+    const rawSavedSupplier = localStorage.getItem("pending_supplier");
+    let savedSupplier = null;
+    
+    // Safety check for JSON parsing
+    if (rawSavedSupplier && rawSavedSupplier !== "undefined") {
+      try {
+        savedSupplier = JSON.parse(rawSavedSupplier);
+      } catch (e) {
+        savedSupplier = null;
       }
     }
-  }, [itemId, searchParams]);
+
+    const pendingBatch = JSON.parse(localStorage.getItem("pending_batch_items") || "[]");
+    const isBatchInProgress = pendingBatch.length > 0;
+
+    if (urlSid) {
+      setFormData((prev) => ({
+        ...prev,
+        supplierId: urlSid,
+        companyName: urlCName,
+        companyNumber: urlCPhone,
+      }));
+    } else if (savedSupplier?.supplierId) { // Added ?. safety check here
+      setFormData((prev) => ({
+        ...prev,
+        supplierId: savedSupplier.supplierId,
+        companyName: savedSupplier.companyName,
+        companyNumber: savedSupplier.companyNumber,
+        purchaseDate: isBatchInProgress
+          ? savedSupplier.purchaseDate || getTodayDate()
+          : getTodayDate(),
+      }));
+    }
+  }
+}, [itemId, searchParams]);
 
   const handleSupplierChange = (e) => {
     const selectedId = e.target.value;
+
+    // NEW LOGIC: Handle "Add New" selection
+    if (selectedId === "ADD_NEW") {
+      // Save current form progress so user doesn't lose HSN/Name/Qty
+      localStorage.setItem("item_form_draft", JSON.stringify(formData));
+      // Route to supplier page with a flag
+      router.push("/dashboard/AddSupplier?from=addItem");
+      return;
+    }
+
+    // 1. Handle "No Supplier" selected
+    if (!selectedId) {
+      setFormData((prev) => ({
+        ...prev,
+        supplierId: "",
+        companyName: "",
+        companyNumber: "",
+      }));
+      localStorage.removeItem("pending_supplier");
+      return;
+    }
+
+    // 2. Handle "OTHER / CASH" selected
+    if (selectedId === "OTHER") {
+      // FIX: Define the constant first so it can be used below
+      const otherData = {
+        supplierId: "OTHER",
+        companyName: "Cash/Other Supplier",
+        companyNumber: "0000000000",
+        purchaseDate: formData.purchaseDate,
+      };
+
+      // Update React State
+      setFormData((prev) => ({ ...prev, ...otherData }));
+
+      // Update Local Storage
+      localStorage.setItem("pending_supplier", JSON.stringify(otherData));
+      return;
+    }
+
     const supplier = supplierList.find((s) => s.supplierId === selectedId);
 
     if (supplier) {
@@ -100,8 +219,11 @@ function Additem() {
         supplierId: supplier.supplierId,
         companyName: supplier.companyName,
         companyNumber: supplier.companyNumber || supplier.supplierMobileNumber,
+        purchaseDate: formData.purchaseDate, // Keep currently selected date
       };
       setFormData((prev) => ({ ...prev, ...supplierData }));
+
+      // Update local storage
       localStorage.setItem("pending_supplier", JSON.stringify(supplierData));
     } else {
       setFormData((prev) => ({
@@ -113,10 +235,11 @@ function Additem() {
     }
   };
 
-  // ✅ New helper to show suggestions when clicking on Item Name based on HSN entered
   const handleNameFocus = async () => {
     if (formData.hsnSac.length > 2) {
-      const res = await fetch(`/api/AddItems?searchName=${formData.name}&searchHsn=${formData.hsnSac}`);
+      const res = await fetch(
+        `/api/AddItems?searchName=${formData.name}&searchHsn=${formData.hsnSac}`,
+      );
       const data = await res.json();
       setNameSuggestions(data);
     }
@@ -132,19 +255,18 @@ function Additem() {
       const data = await res.json();
       setHsnSuggestions(data);
     } else if (name === "name" && value.length > 2) {
-      // ✅ Updated to filter names by the current HSN in state
-      const res = await fetch(`/api/AddItems?searchName=${value}&searchHsn=${formData.hsnSac}`);
+      const res = await fetch(
+        `/api/AddItems?searchName=${value}&searchHsn=${formData.hsnSac}`,
+      );
       const data = await res.json();
       setNameSuggestions(data);
     }
-    // If user changes the text manually after selecting, reset the selectedItemId
+
     if (name === "name" || name === "hsnSac") {
       setSelectedItemId(null);
     }
 
     // --- VALIDATION LOGIC ---
-
-    // 1. Quantity Validation (Numbers only)
     if (name === "quantity") {
       if (value && isNaN(value)) {
         newErrors.quantity = "There should only be numbers";
@@ -153,7 +275,6 @@ function Additem() {
       }
     }
 
-    // 2. Minimum Order Level Validation (Numbers only) - ✅ ADDED
     if (name === "minOrderLevel") {
       if (value && isNaN(value)) {
         newErrors.minOrderLevel = "There should only be numbers";
@@ -162,7 +283,6 @@ function Additem() {
       }
     }
 
-    // 3. Unit Price Validation (Numbers only)
     if (name === "perItemPrice") {
       if (value && isNaN(value)) {
         newErrors.perItemPrice = "There should only be numbers";
@@ -171,7 +291,6 @@ function Additem() {
       }
     }
 
-    // 4. Discount Validation (Max 100%)
     if (name === "discountPercentage") {
       if (Number(value) > 100) {
         newErrors.discountPercentage = "Do Not Exceed Above 100%";
@@ -180,7 +299,6 @@ function Additem() {
       }
     }
 
-    // 5. GST Validation
     if (name === "gstPercentage") {
       if (Number(value) > 100) {
         newErrors.gstPercentage = "Do Not Exceed Above 100%";
@@ -192,9 +310,26 @@ function Additem() {
     }
 
     setErrors(newErrors);
-    if ((name === "discountPercentage" || name === "gstPercentage") && value.length > 2) {
-      return; 
+    if (
+      (name === "discountPercentage" || name === "gstPercentage") &&
+      value.length > 2
+    ) {
+      return;
     }
+
+    // If Date changes, update localStorage immediately if a supplier is already selected
+    if (name === "purchaseDate" && formData.supplierId) {
+      localStorage.setItem(
+        "pending_supplier",
+        JSON.stringify({
+          supplierId: formData.supplierId,
+          companyName: formData.companyName,
+          companyNumber: formData.companyNumber,
+          purchaseDate: value,
+        }),
+      );
+    }
+
     // --- DATA UPDATE & CALCULATION ---
     setFormData((prev) => {
       let updatedData = { ...prev, [name]: value };
@@ -211,7 +346,7 @@ function Additem() {
 
       const discountPercent =
         name === "discountPercentage"
-          ? Number(value || 0 )
+          ? Number(value || 0)
           : Number(prev.discountPercentage || 0);
       const gstPercent =
         name === "gstPercentage"
@@ -219,10 +354,9 @@ function Additem() {
           : Number(prev.gstPercentage || 0);
 
       if (newOriginalPrice > 0) {
-        // ✅ Fix: Prevent negative amount by capping effective discount at 100%
         const effectiveDiscount = Math.min(discountPercent, 100);
         const discountAmount = (newOriginalPrice * effectiveDiscount) / 100;
-        
+
         updatedData.discountPrice = discountAmount.toFixed(2);
         const taxableValue = newOriginalPrice - discountAmount;
         const gstAmount = (taxableValue * gstPercent) / 100;
@@ -236,15 +370,32 @@ function Additem() {
     });
   };
 
-  const handleSelectSuggestion = (item) => {
+  const handleSelectSuggestion = async (item) => {
     setFormData((prev) => ({
       ...prev,
       hsnSac: item.hsnSac.toString(),
       name: item.name,
       category: item.category,
       unit: item.unit,
+      minOrderLevel: item.minOrderLevel || "",
     }));
-    setSelectedItemId(item.itemId); // 👈 Store the existing ID
+    setSelectedItemId(item.itemId);
+
+    try {
+      const res = await fetch(`/api/AddItems?getLatestHistory=${item.itemId}`);
+      if (res.ok) {
+        const latestHistory = await res.json();
+        if (latestHistory && latestHistory.minOrderLevel !== undefined) {
+          setFormData((prev) => ({
+            ...prev,
+            minOrderLevel: latestHistory.minOrderLevel.toString(),
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch latest history for pre-fill:", err);
+    }
+
     setHsnSuggestions([]);
     setNameSuggestions([]);
   };
@@ -252,7 +403,7 @@ function Additem() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. VALIDATION (Keep existing logic)
+
     if (Object.keys(errors).length > 0) {
       alert("Please fix the highlighted errors before submitting.");
       return;
@@ -260,6 +411,11 @@ function Additem() {
 
     if (!formData.supplierId) {
       alert("Please select a supplier first.");
+      return;
+    }
+
+    if (!formData.purchaseDate) {
+      alert("Please select a date.");
       return;
     }
 
@@ -271,12 +427,13 @@ function Additem() {
     const isEditMode = !!itemId;
 
     if (isEditMode) {
-      // --- LOGIC FOR EDIT MODE: Update DB directly ---
       try {
+          const { itemId: uuidIgnored, ...sendData } = formData;
+
         const res = await fetch("/api/AddItems", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ itemId, ...formData }),
+          body: JSON.stringify({ recordId: itemId, ...sendData }),
         });
 
         if (!res.ok) throw new Error("Failed to update item");
@@ -288,39 +445,35 @@ function Additem() {
         alert("Error updating item ❌");
       }
     } else {
-      // --- LOGIC FOR ADD MODE: Save to Local List and reset form ---
-
-      // Create a unique temp ID so the "Discard" button on the next page knows which one to delete
       const tempEntry = {
         ...formData,
         tempId: Date.now(),
         existingItemId: selectedItemId,
       };
 
-      // Get current list from storage (or empty array if none)
       const currentList = JSON.parse(
-        localStorage.getItem("pending_batch_items") || "[]"
+        localStorage.getItem("pending_batch_items") || "[]",
       );
       currentList.push(tempEntry);
 
-      // Save updated list to localStorage
       localStorage.setItem("pending_batch_items", JSON.stringify(currentList));
 
-      // Save/Lock the supplier info so it stays consistent for this purchase
+      // Save Date along with Supplier info
       localStorage.setItem(
         "pending_supplier",
         JSON.stringify({
           supplierId: formData.supplierId,
           companyName: formData.companyName,
           companyNumber: formData.companyNumber,
-        })
+          purchaseDate: formData.purchaseDate, // Save the date so it locks for next item
+        }),
       );
 
       alert(
-        "Item added to temporary list! You can now add one more item or click 'Stop Adding'. ✅"
+        "Item added to temporary list! You can now add one more item or click 'Stop Adding'. ✅",
       );
 
-      // Reset ONLY the item-specific fields so the user can add another item immediately
+      // Reset form but KEEP Supplier and Date
       setFormData((prev) => ({
         ...prev,
         name: "",
@@ -335,6 +488,9 @@ function Additem() {
         totalAmount: "",
         hsnSac: "",
         category: "",
+        purchaseDate: prev.purchaseDate, // Explicitly keep the date for the next item in this batch
+
+        // Note: We do NOT reset purchaseDate here
       }));
     }
   };
@@ -343,12 +499,12 @@ function Additem() {
     !itemId &&
     JSON.parse(
       typeof window !== "undefined"
-        ? localStorage.getItem("purchase_item_ids") || "[]"
-        : "[]"
+        ? localStorage.getItem("pending_batch_items") || "[]"
+        : "[]",
     ).length > 0;
 
-  // Helper for key blocking
-  const blockKeys = (e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault();
+  const blockKeys = (e) =>
+    ["e", "E", "+", "-"].includes(e.key) && e.preventDefault();
 
   return (
     <div className="add-item-container">
@@ -368,6 +524,7 @@ function Additem() {
             {/* HSN COLUMN */}
             <div className="col-md-4 position-relative">
               <label className="form-label fw-medium">HSN / SAC</label>
+              <span className="text-danger">*</span>
               <input
                 className="form-control"
                 name="hsnSac"
@@ -382,7 +539,6 @@ function Additem() {
                   className="list-group position-absolute w-100 z-3 shadow-lg"
                   style={{ top: "100%", maxHeight: "200px", overflowY: "auto" }}
                 >
-                  {/* ✅ Deduplicate and show only HSN numbers */}
                   {Array.from(new Set(hsnSuggestions.map((a) => a.hsnSac)))
                     .map((hsn) => hsnSuggestions.find((a) => a.hsnSac === hsn))
                     .map((item) => (
@@ -391,7 +547,10 @@ function Additem() {
                         className="list-group-item list-group-item-action cursor-pointer"
                         style={{ cursor: "pointer" }}
                         onMouseDown={() => {
-                          setFormData((p) => ({ ...p, hsnSac: item.hsnSac.toString() }));
+                          setFormData((p) => ({
+                            ...p,
+                            hsnSac: item.hsnSac.toString(),
+                          }));
                           setHsnSuggestions([]);
                         }}
                       >
@@ -405,13 +564,14 @@ function Additem() {
             {/* NAME COLUMN */}
             <div className="col-md-4 position-relative">
               <label className="form-label fw-medium">Item Name</label>
+              <span className="text-danger">*</span>
               <input
                 className="form-control"
                 name="name"
                 autoComplete="off"
                 value={formData.name}
                 onChange={handleChange}
-                onFocus={handleNameFocus} // ✅ Triggers fetch on click
+                onFocus={handleNameFocus}
                 onBlur={() => setTimeout(() => setNameSuggestions([]), 200)}
                 required
               />
@@ -420,23 +580,29 @@ function Additem() {
                   className="list-group position-absolute w-100 z-3 shadow-lg"
                   style={{ top: "100%", maxHeight: "200px", overflowY: "auto" }}
                 >
-                  {nameSuggestions.map((item) => (
-                    <li
-                      key={item._id}
-                      className="list-group-item list-group-item-action"
-                      style={{ cursor: "pointer" }}
-                      onMouseDown={() => handleSelectSuggestion(item)}
-                    >
-                      {item.name}{" "}
-                      <small className="text-muted">({item.category})</small>
-                    </li>
-                  ))}
+                  {Array.from(new Set(nameSuggestions.map((item) => item.name)))
+                    .map((name) =>
+                      nameSuggestions.find((item) => item.name === name),
+                    )
+                    .map((item) => (
+                      <li
+                        key={item._id}
+                        className="list-group-item list-group-item-action"
+                        style={{ cursor: "pointer" }}
+                        onMouseDown={() => handleSelectSuggestion(item)}
+                      >
+                        {item.name}{" "}
+                        <small className="text-muted">({item.category})</small>
+                      </li>
+                    ))}
                 </ul>
               )}
             </div>
 
             <div className="col-md-4">
               <label className="form-label fw-medium">Item Category</label>
+              <span className="text-danger">*</span>
+
               <select
                 className="form-select"
                 name="category"
@@ -456,78 +622,10 @@ function Additem() {
 
           {/* ROW 2 */}
           <div className="row g-4 px-2 mb-2">
-            {/* QUANTITY */}
-            <div className="col-md-4">
-              <label className="form-label fw-medium">Quantity</label>
-              <input
-                className="form-control"
-                type="number"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                onKeyDown={blockKeys} // ✅ Block invalid keys
-                required
-                style={
-                  errors.quantity
-                    ? {
-                        border: "1px solid red",
-                        boxShadow: "0 0 0 0.2rem rgba(220, 53, 69, 0.25)",
-                      }
-                    : {}
-                }
-              />
-              {errors.quantity && (
-                <small
-                  style={{
-                    color: "red",
-                    fontSize: "12px",
-                    marginTop: "5px",
-                    display: "block",
-                  }}
-                >
-                  {errors.quantity}
-                </small>
-              )}
-            </div>
-
-            {/* MINIMUM ORDER LEVEL */}
-            <div className="col-md-4">
-              <label className="form-label fw-medium">
-                Minimum Order Level
-              </label>
-              <input
-                className="form-control"
-                type="number"
-                name="minOrderLevel"
-                value={formData.minOrderLevel}
-                onChange={handleChange}
-                onKeyDown={blockKeys} // ✅ Block invalid keys
-                required
-                style={
-                  errors.minOrderLevel
-                    ? {
-                        border: "1px solid red",
-                        boxShadow: "0 0 0 0.2rem rgba(220, 53, 69, 0.25)",
-                      }
-                    : {}
-                }
-              />
-              {errors.minOrderLevel && (
-                <small
-                  style={{
-                    color: "red",
-                    fontSize: "12px",
-                    marginTop: "5px",
-                    display: "block",
-                  }}
-                >
-                  {errors.minOrderLevel}
-                </small>
-              )}
-            </div>
-
-            <div className="col-md-4">
+                        <div className="col-md-4">
               <label className="form-label fw-medium">Unit</label>
+              <span className="text-danger">*</span>
+
               <select
                 className="form-select"
                 name="unit"
@@ -549,41 +647,66 @@ function Additem() {
                 <option>mm</option>
               </select>
             </div>
+            <div className="col-md-4">
+              <label className="form-label fw-medium">Quantity</label>
+              <span className="text-danger">*</span>
+
+              <input
+                className="form-control"
+                type="number"
+                name="quantity"
+                value={formData.quantity}
+                onChange={handleChange}
+                onKeyDown={blockKeys}
+                required
+                style={errors.quantity ? { border: "1px solid red" } : {}}
+              />
+              {errors.quantity && (
+                <small style={{ color: "red" }}>{errors.quantity}</small>
+              )}
+            </div>
+
+            <div className="col-md-4">
+              <label className="form-label fw-medium">
+                Minimum Order Level
+              </label>
+              <span className="text-danger">*</span>
+
+              <input
+                className="form-control"
+                type="number"
+                name="minOrderLevel"
+                value={formData.minOrderLevel}
+                onChange={handleChange}
+                onKeyDown={blockKeys}
+                required
+                style={errors.minOrderLevel ? { border: "1px solid red" } : {}}
+              />
+              {errors.minOrderLevel && (
+                <small style={{ color: "red" }}>{errors.minOrderLevel}</small>
+              )}
+            </div>
+
           </div>
 
           {/* ROW 3 */}
           <div className="row g-4 px-2 mb-2">
-            {/* UNIT PRICE */}
             <div className="col-md-4">
               <label className="form-label fw-medium">Unit Price</label>
+              <span className="text-danger">*</span>
+
               <input
                 className="form-control"
                 type="number"
                 name="perItemPrice"
                 value={formData.perItemPrice}
                 onChange={handleChange}
-                onKeyDown={blockKeys} // ✅ Block invalid keys
+                onKeyDown={blockKeys}
                 required
-                style={
-                  errors.perItemPrice
-                    ? {
-                        border: "1px solid red",
-                        boxShadow: "0 0 0 0.2rem rgba(220, 53, 69, 0.25)",
-                      }
-                    : {}
-                }
+                style={errors.perItemPrice ? { border: "1px solid red" } : {}}
               />
               {errors.perItemPrice && (
-                <small
-                  style={{
-                    color: "red",
-                    fontSize: "12px",
-                    marginTop: "5px",
-                    display: "block",
-                  }}
-                >
-                  {errors.perItemPrice}
-                </small>
+                <small style={{ color: "red" }}>{errors.perItemPrice}</small>
               )}
             </div>
 
@@ -598,7 +721,6 @@ function Additem() {
               />
             </div>
 
-            {/* DISCOUNT */}
             <div className="col-md-4">
               <label className="form-label fw-medium">Discount %</label>
               <input
@@ -607,34 +729,22 @@ function Additem() {
                 name="discountPercentage"
                 value={formData.discountPercentage}
                 onChange={handleChange}
-                onKeyDown={blockKeys} // ✅ Block invalid keys
+                onKeyDown={blockKeys}
                 placeholder="0"
                 style={
-                  errors.discountPercentage
-                    ? {
-                        border: "1px solid red",
-                        boxShadow: "0 0 0 0.2rem rgba(220, 53, 69, 0.25)",
-                      }
-                    : {}
+                  errors.discountPercentage ? { border: "1px solid red" } : {}
                 }
               />
               {errors.discountPercentage && (
-                <small
-                  style={{
-                    color: "red",
-                    fontSize: "12px",
-                    marginTop: "5px",
-                    display: "block",
-                  }}
-                >
+                <small style={{ color: "red" }}>
                   {errors.discountPercentage}
                 </small>
               )}
             </div>
           </div>
 
-          {/* COMBINED ROW: GST, Final Amount, Supplier */}
-          <div className="row g-4 px-2 mb-4">
+          {/* COMBINED ROW 4: GST, Final Amount, Supplier (col-md-4 each) */}
+          <div className="row g-4 px-2 mb-2">
             {/* GST */}
             <div className="col-md-4">
               <label className="form-label fw-medium">GST %</label>
@@ -644,31 +754,16 @@ function Additem() {
                 name="gstPercentage"
                 value={formData.gstPercentage}
                 onChange={handleChange}
-                onKeyDown={blockKeys} // ✅ Block invalid keys
+                onKeyDown={blockKeys}
                 placeholder="0"
-                style={
-                  errors.gstPercentage
-                    ? {
-                        border: "1px solid red",
-                        boxShadow: "0 0 0 0.2rem rgba(220, 53, 69, 0.25)",
-                      }
-                    : {}
-                }
+                style={errors.gstPercentage ? { border: "1px solid red" } : {}}
               />
               {errors.gstPercentage && (
-                <small
-                  style={{
-                    color: "red",
-                    fontSize: "12px",
-                    marginTop: "5px",
-                    display: "block",
-                  }}
-                >
-                  {errors.gstPercentage}
-                </small>
+                <small style={{ color: "red" }}>{errors.gstPercentage}</small>
               )}
             </div>
 
+            {/* FINAL AMOUNT */}
             <div className="col-md-4">
               <label
                 className="form-label fw-bold"
@@ -691,50 +786,116 @@ function Additem() {
             </div>
 
             {!itemId && (
-              <div className="col-md-4">
-                <label className="form-label fw-bold">Select Supplier</label>
-                <select
-                  className="form-select"
-                  value={formData.supplierId}
-                  onChange={handleSupplierChange}
-                  disabled={isNavigationLocked}
-                  required
-                >
-                  <option value="">-- Click to choose a supplier --</option>
-                  {supplierList.map((s) => (
-                    <option key={s._id} value={s.supplierId}>
-                      {s.companyName} ({s.supplierName})
+              <>
+                {/* SUPPLIER */}
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Select Supplier</label>
+                  <span className="text-danger">*</span>
+
+                  <select
+                    className="form-select"
+                    value={formData.supplierId}
+                    onChange={handleSupplierChange}
+                    disabled={isNavigationLocked}
+                    required
+                  >
+                    <option value="">-- Click to choose --</option>
+
+                    {supplierList.map((s) => (
+                      <option key={s._id} value={s.supplierId}>
+                        {s.companyName} ({s.supplierName})
+                      </option>
+                    ))}
+                    <option value="OTHER" style={{ color: "blue" }}>
+                      + Other / One-time Purchase
                     </option>
-                  ))}
-                </select>
-                {isNavigationLocked && (
-                  <small className="text-danger mt-1 d-block">
-                    Supplier cannot be changed until invoice is completed.
-                  </small>
-                )}
-              </div>
+                    {/* ADD THIS AT THE BOTTOM */}
+                    <option
+                      value="ADD_NEW"
+                      style={{
+                        fontWeight: "bold",
+                        color: "green",
+                        backgroundColor: "#eaffea",
+                      }}
+                    >
+                      + Add New Supplier
+                    </option>
+                  </select>
+                  {/* If OTHER is selected, let them type the name */}
+                  {formData.supplierId === "OTHER" && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        placeholder="Type Supplier Name (Optional)"
+                        className="form-control"
+                        value={
+                          formData.companyName === "Cash/Other Supplier"
+                            ? ""
+                            : formData.companyName
+                        }
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            companyName: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 
+          {/* ROW 5: PURCHASE DATE (First Column) */}
+          {!itemId && (
+            <div className="row g-4 px-2 mb-4">
+              <div className="col-md-4">
+                <label className="form-label fw-bold">Purchase Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="purchaseDate"
+                  value={formData.purchaseDate}
+                  onChange={handleChange}
+                  disabled={isNavigationLocked} // Locks when 2nd item is being added
+                  required
+                />
+                {/* {isNavigationLocked && (
+                    <small className="text-danger mt-1 d-block">
+                      Date locked for this batch.
+                    </small>
+                  )} */}
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
-            <button
-              type="button"
-              className="btn btn-warning px-4 py-2 fw-semibold rounded-3"
-              onClick={() => router.push("/dashboard/ReviewItems")}
-            >
-              Stop Adding & View List (
-              {typeof window !== "undefined"
-                ? JSON.parse(
-                    localStorage.getItem("pending_batch_items") || "[]"
+            {/* ONLY SHOW YELLOW BUTTON IF COUNT > 0 */}
+            {(typeof window !== "undefined"
+              ? JSON.parse(localStorage.getItem("pending_batch_items") || "[]")
+                  .length
+              : 0) > 0 && (
+              <button
+                type="button"
+                className="btn btn-warning px-4 py-2 fw-semibold rounded-3"
+                onClick={() => router.push("/dashboard/ReviewItems")}
+              >
+                Stop Adding & View List (
+                {
+                  JSON.parse(
+                    localStorage.getItem("pending_batch_items") || "[]",
                   ).length
-                : 0}
-              )
-            </button>
+                }
+                )
+              </button>
+            )}
+
             <button
               type="submit"
               className="btn btn-primary px-4 py-2 fw-semibold rounded-3"
-              disabled={Object.keys(errors).length > 0} // ✅ Disable button if errors exist
+              disabled={Object.keys(errors).length > 0}
             >
               {itemId ? "Update Item" : "Add Item"}
             </button>

@@ -17,6 +17,10 @@ export async function POST(req) {
 
     for (const item of items) {
       const id = item.existingItemId || randomUUID();
+
+      const finalDate = item.purchaseDate || supplier.purchaseDate;
+      const dateValue = item.purchaseDate || supplier.purchaseDate;
+
       await AddItems.create({
         ...item,
         itemId: id,
@@ -25,6 +29,8 @@ export async function POST(req) {
         supplierId: supplier.supplierId,
         companyName: supplier.companyName,
         companyNumber: supplier.companyNumber,
+        Date: dateValue ? new Date(dateValue) : new Date(), 
+
       });
 
       // 2. Sync to Master table ONLY IF it's a new item
@@ -61,6 +67,8 @@ export async function POST(req) {
       totalAmountBeforeTax: totalBefore.toFixed(2),
       totalTaxAmount: totalTax.toFixed(2),
       totalAmountAfterTax: (totalBefore + totalTax).toFixed(2),
+      purchaseDate: supplier.purchaseDate ? new Date(supplier.purchaseDate) : new Date(),
+
     });
 
     return NextResponse.json({ message: "Saved" }, { status: 201 });

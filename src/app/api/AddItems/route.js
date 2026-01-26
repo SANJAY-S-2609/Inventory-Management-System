@@ -7,19 +7,19 @@ import { connectDB } from "../../../lib/db";
 import PurchaseHistory from "../../../models/PurchaseHistory";
 
 /* =========================
-   POST : ADD ITEM (UNCHANGED)
+   POST : ADD ITEM
    ========================= */
 export async function POST(request) {
   try {
     const body = await request.json();
 
-console.log("ADD ITEM BODY 👉", body);
+    console.log("ADD ITEM BODY 👉", body);
     const {
       supplierId,
       name,
       quantity,
       unit,
-      perItemPrice, 
+      perItemPrice,
       originalPrice,
       discountPercentage,
       discountPrice,
@@ -27,11 +27,13 @@ console.log("ADD ITEM BODY 👉", body);
       companyNumber,
       hsnSac,
       category,
-      minOrderLevel, gstPercentage
+      minOrderLevel,
+      gstPercentage,
+      purchaseDate, 
+      // 👈 1. Extract purchaseDate from frontend body
     } = body;
 
-
-    // 👈 Added perItemPrice to validation
+    // Validation
     if (!name || !quantity || !unit || !perItemPrice) {
       return NextResponse.json(
         { message: "Required fields missing (Name, Qty, Unit, or Price per item)" },
@@ -42,10 +44,9 @@ console.log("ADD ITEM BODY 👉", body);
     const qty = Number(quantity);
     const pip = Number(perItemPrice);
 
-    const op = qty * pip; 
+    const op = qty * pip;
     const dp = Number(discountPrice || 0);
     const dperc = Number(discountPercentage || 0);
-
 
     let finalDiscountPrice = dp;
     let finalDiscountPercentage = dperc;
@@ -82,12 +83,17 @@ console.log("ADD ITEM BODY 👉", body);
       totalAmount: Number(totalAmount.toFixed(2)),
       companyName,
       companyNumber,
-       hsnSac: Number(hsnSac),
+      hsnSac: Number(hsnSac),
       category,
       minOrderLevel: Number(minOrderLevel),
-      gstPercentage: Number(gstPercentage)
+      gstPercentage: Number(gstPercentage),
+      // 👈 2. Map frontend 'purchaseDate' to Schema 'Date'
+      // If purchaseDate exists, use it; otherwise fallback to Date.now()
+      Date: purchaseDate ? new Date(purchaseDate) : Date.now(),
     };
-console.log(itemData.supplierId);
+
+    console.log("Saving Item with Date:", itemData.Date); // Debugging log
+
     await connectDB();
     await AddItems.create(itemData);
 
@@ -95,8 +101,8 @@ console.log(itemData.supplierId);
       { message: "Item added successfully", data: itemData },
       { status: 201 }
     );
-
   } catch (error) {
+    console.error("POST Error:", error);
     return NextResponse.json(
       { message: "Internal Server Error" },
       { status: 500 }
@@ -116,12 +122,25 @@ export async function GET(request) {
 
     const searchHsn = searchParams.get("searchHsn");
     const searchName = searchParams.get("searchName");
+    const getLatestHistory = searchParams.get("getLatestHistory");
 
+    if (getLatestHistory) {
+      const latestEntry = await AddItems.findOne({ itemId: getLatestHistory })
+        .sort({ Date: -1 })
+        .lean();
+      return NextResponse.json(latestEntry || {});
+    }
+    
     if (itemId) {
-      const item = await AddItems.findOne({ itemId });
+      // 👈 When fetching a single item for Editing, include purchaseDate mapping
+      const item = await AddItems.findById( itemId ).lean();
+      if(item) {
+          // Map DB 'Date' back to 'purchaseDate' for the frontend to read easily
+          item.purchaseDate = item.Date; 
+      }
       return NextResponse.json(item, { status: 200 });
     }
-        // If searching for suggestions
+
     if (searchHsn || searchName) {
       let query = {};
       if (searchHsn) {
@@ -145,14 +164,12 @@ export async function GET(request) {
     }
     const items = await AddItems.find().sort({ createdAt: -1 });
     return NextResponse.json(items, { status: 200 });
-
   } catch (error) {
     return NextResponse.json(
       { message: "Failed to fetch items" },
       { status: 500 }
     );
   }
-  
 }
 
 /* =========================
@@ -162,18 +179,22 @@ export async function PUT(request) {
   try {
     await connectDB();
     const body = await request.json();
-    const { itemId, ...updateData } = body;
+    
+    const { recordId, ...updateData } = body;
 
-    if (!itemId) {
-      return NextResponse.json({ message: "Item ID is required" }, { status: 400 });
+    if (!recordId) {
+      return NextResponse.json(
+        { message: "Record ID is required" },
+        { status: 400 }
+      );
     }
 
-    // 👈 NEW CALCULATION LOGIC FOR UPDATE
+
+
     const qty = Number(updateData.quantity);
     const pip = Number(updateData.perItemPrice);
-    // Recalculate prices to ensure data integrity
 
-    const op = qty * pip; 
+    const op = qty * pip;
     const dperc = Number(updateData.discountPercentage || 0);
     const finalDiscountPrice = (op * dperc) / 100;
     const totalAmount = op - finalDiscountPrice;
@@ -182,52 +203,53 @@ export async function PUT(request) {
     const cleanedData = {
       ...updateData,
       quantity: Number(updateData.quantity),
-      perItemPrice: pip, // 👈 Ensure this is saved
+      perItemPrice: pip,
+      gstPercentage: Number(updateData.gstPercentage), // <--- ADD THIS LINE EXPLICITLY
       originalPrice: Number(op.toFixed(2)),
       discountPercentage: dperc,
       discountPrice: Number(finalDiscountPrice.toFixed(2)),
       totalAmount: Number(totalAmount.toFixed(2)),
       hsnSac: Number(updateData.hsnSac),
-      // Ensure strings are trimmed
       companyName: updateData.companyName.trim(),
       companyNumber: updateData.companyNumber.trim(),
+      // 👈 3. Update the Date if provided in PUT request
+      Date: updateData.purchaseDate ? new Date(updateData.purchaseDate) : undefined,
     };
 
-    const updatedItem = await AddItems.findOneAndUpdate(
-      { itemId },
+    const updatedItem = await AddItems.findByIdAndUpdate(
+       recordId ,
       { $set: cleanedData },
-      { new: true, runValidators: true } // runValidators ensures the phone number regex is checked
+      { new: true, runValidators: true }
     );
 
     if (!updatedItem) {
       return NextResponse.json({ message: "Item not found" }, { status: 404 });
     }
-    
+
     /* ------------------------------------------------------------------
-       NEW: RECALCULATE ALL INVOICES (PurchaseHistory) LINKED TO THIS ITEM
-    ------------------------------------------------------------------ */
-    // Find all invoices that include this itemId in their itemIds array
-    const relatedInvoices = await PurchaseHistory.find({ itemIds: itemId });
+       RECALCULATE INVOICES
+     ------------------------------------------------------------------ */
+    const customUuid = updatedItem.itemId; 
+
+    const relatedInvoices = await PurchaseHistory.find({ itemIds: customUuid });
 
     for (const invoice of relatedInvoices) {
-      // Fetch all items currently in this specific invoice to get their updated prices
       const allItemsInThisInvoice = await AddItems.find({
         itemId: { $in: invoice.itemIds },
       });
 
-      // Recalculate Total Before Tax for the entire invoice
       const newInvoiceTotalBeforeTax = allItemsInThisInvoice.reduce(
         (sum, item) => sum + Number(item.totalAmount),
         0
       );
 
-      // Recalculate GST based on the percentages already saved in the invoice
-      const newCgst = (newInvoiceTotalBeforeTax * (invoice.cgstPercent || 0)) / 100;
-      const newSgst = (newInvoiceTotalBeforeTax * (invoice.sgstPercent || 0)) / 100;
+      const newCgst =
+        (newInvoiceTotalBeforeTax * (invoice.cgstPercent || 0)) / 100;
+      const newSgst =
+        (newInvoiceTotalBeforeTax * (invoice.sgstPercent || 0)) / 100;
       const newTotalTax = newCgst + newSgst;
       const newTotalAfterTax = newInvoiceTotalBeforeTax + newTotalTax;
 
-      // Update the Invoice record with new calculated values
       await PurchaseHistory.updateOne(
         { _id: invoice._id },
         {
@@ -241,11 +263,16 @@ export async function PUT(request) {
         }
       );
     }
-    /* ------------------------------------------------------------------ */
 
-    return NextResponse.json({ message: "Item updated successfully", data: updatedItem }, { status: 200 });
+    return NextResponse.json(
+      { message: "Item updated successfully", data: updatedItem },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("PUT ERROR:", error);
-    return NextResponse.json({ message: error.message || "Failed to update item" }, { status: 500 });
+    return NextResponse.json(
+      { message: error.message || "Failed to update item" },
+      { status: 500 }
+    );
   }
 }

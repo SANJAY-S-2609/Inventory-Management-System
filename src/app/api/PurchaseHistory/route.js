@@ -26,6 +26,8 @@ export async function GET() {
       return {
         ...purchaseObj,
         companyName: supplierMap[p.supplierId] || "Unknown Supplier",
+        purchaseDate: purchaseObj.purchaseDate, 
+
         // Mapping totalAmountAfterTax to a simpler key for the frontend if needed
         totalCost: purchaseObj.totalAmountAfterTax, 
       };
