@@ -1,8 +1,6 @@
-
-
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import ItemDetails from "../../../models/ItemDetails"; 
+import ItemDetails from "../../../models/ItemDetails";
 import DistributedItems from "../../../models/DistributedItems";
 
 const connectDB = async () => {
@@ -16,57 +14,105 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const viewType = searchParams.get("viewType") || "weekly";
 
-    // 1. Fetch All Data
-    const allItems = await ItemDetails.find({});
+    // 1. Get all data (Newest items first)
+    const allItems = await ItemDetails.find({}).sort({ createdAt: -1 });
     const allDistributions = await DistributedItems.find({});
 
-    // 2. Calculate Real-Time Stock Remaining
+    // 2. Map Total Distributions by Item Name
     const distMap = allDistributions.reduce((acc, d) => {
-      acc[d.itemId] = (acc[d.itemId] || 0) + (Number(d.numberOfItems) || 0);
+      const nameKey = d.itemName.toLowerCase().trim();
+      acc[nameKey] = (acc[nameKey] || 0) + (Number(d.numberOfItems) || 0);
       return acc;
     }, {});
 
-    const liveInventory = allItems.map(item => {
-      const distributed = distMap[item.itemId] || 0;
-      const remaining = (Number(item.quantity) || 0) - distributed;
-      return { ...item._doc, remaining: remaining < 0 ? 0 : remaining, distributed };
+    // 3. Consolidate Items by Name
+    const consolidatedMap = {};
+    allItems.forEach((item) => {
+      const nameKey = item.name.toLowerCase().trim();
+      if (!consolidatedMap[nameKey]) {
+        // This is the latest batch (because of the sort)
+        consolidatedMap[nameKey] = {
+          name: item.name,
+          category: item.category,
+          totalPurchased: 0,
+          minOrderLevel: Number(item.minOrderLevel) || 0, // Latest threshold
+        };
+      }
+      consolidatedMap[nameKey].totalPurchased += Number(item.quantity) || 0;
     });
 
-    // 3. Alerts Logic
-    const outOfStock = liveInventory.filter(i => i.remaining <= 0);
-    const lowStock = liveInventory.filter(i => i.remaining > 0 && i.remaining < 10);
+    // 4. Calculate Final State
+    const finalList = Object.values(consolidatedMap).map((item) => {
+      const issued = distMap[item.name.toLowerCase().trim()] || 0;
+      const remaining = item.totalPurchased - issued;
+      return {
+        ...item,
+        remaining: remaining < 0 ? 0 : remaining,
+      };
+    });
 
-    // 4. Dynamic Analytics Logic
+    // 5. Filter Alerts
+    const outOfStock = finalList
+      .filter((i) => i.remaining <= 0)
+      .map((i) => ({ name: i.name, category: i.category }));
+
+    const lowStock = finalList
+      .filter(
+        (i) =>
+          i.remaining > 0 &&
+          i.minOrderLevel > 0 &&
+          i.remaining <= i.minOrderLevel,
+      )
+      .map((i) => ({
+        name: i.name,
+        category: i.category,
+        quantity: i.remaining,
+        threshold: i.minOrderLevel,
+      }));
+
+    // 6. Analytics Logic (Simplified based on Distribution dates)
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     let analytics = [];
+
     if (viewType === "weekly") {
-      const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      analytics = days.map((day, index) => {
-        // Filter distributions for this specific day of the current week
-        const dayDist = allDistributions.filter(d => new Date(d.distributedDate).getDay() === index)
-                        .reduce((sum, d) => sum + d.numberOfItems, 0);
-        
-        // Use a relative stock value for visualization based on totals
-        return { label: day, stock: Math.floor(Math.random() * 100) + 50, dist: dayDist };
+      analytics = days.map((day, idx) => {
+        const count = allDistributions
+          .filter((d) => new Date(d.distributedDate).getDay() === idx)
+          .reduce((sum, d) => sum + (Number(d.numberOfItems) || 0), 0);
+        return { label: day, stock: 100, dist: count };
       });
     } else {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      analytics = months.map((month, index) => {
-        const monthDist = allDistributions.filter(d => new Date(d.distributedDate).getMonth() === index)
-                          .reduce((sum, d) => sum + d.numberOfItems, 0);
-        return { label: month, stock: Math.floor(Math.random() * 200) + 100, dist: monthDist };
+      analytics = months.map((month, idx) => {
+        const count = allDistributions
+          .filter((d) => new Date(d.distributedDate).getMonth() === idx)
+          .reduce((sum, d) => sum + (Number(d.numberOfItems) || 0), 0);
+        return { label: month, stock: 200, dist: count };
       });
     }
 
     return NextResponse.json({
       stats: {
-        totalProducts: allItems.length,
-        totalStock: liveInventory.reduce((acc, curr) => acc + curr.remaining, 0),
-        categories: [...new Set(allItems.map(i => i.category))].length
+        totalProducts: finalList.length,
+        totalStock: finalList.reduce((acc, curr) => acc + curr.remaining, 0),
+        categories: [...new Set(allItems.map((i) => i.category))].length,
       },
       alerts: { outOfStock, lowStock },
-      analytics
-    }, { status: 200 });
-
+      analytics,
+    });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

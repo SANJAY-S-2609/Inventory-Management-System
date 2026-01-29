@@ -98,6 +98,7 @@ export default function DashboardLayout({ children }: Props) {
           <div className={isActive("/dashboard/ShowAddedItems")} onClick={() => safeNavigate("/dashboard/ShowAddedItems")}>🧾 Show Added Items</div>
           <div className={isActive("/dashboard/PurchaseHistory")} onClick={() => safeNavigate("/dashboard/PurchaseHistory")}>🕘 Purchase History</div>
           <div className={isActive("/dashboard/StockRegister")} onClick={() => safeNavigate("/dashboard/StockRegister")}>📋 Stock Register</div>
+          <div className={isActive("/dashboard/DistributedHistory")} onClick={() => safeNavigate("/dashboard/DistributedHistory")}>📂 Distributed History</div>
         </nav>
 
         <button className="logout-button" onClick={handleLogout}>↩ Logout</button>

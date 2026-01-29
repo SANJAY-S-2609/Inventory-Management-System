@@ -103,7 +103,7 @@ const ItemDetailsSchema = new mongoose.Schema(
     Date: {
       type: Date,
       required: true,
-      default: Date.now, // automatically stores the entry time
+      default:Date.now,
     },
 
     minOrderLevel: {

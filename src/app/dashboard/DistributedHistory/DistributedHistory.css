@@ -1,0 +1,240 @@
+.history-wrapper {
+  padding: 24px;
+  background-color: #f4f7fe;
+  min-height: 100vh;
+}
+
+.history-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* --- HEADER & FILTER STYLES START --- */
+.history-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap; /* Wraps on mobile */
+  gap: 15px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e5f2;
+}
+
+.history-header-flex h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1b2559;
+  margin: 0;
+}
+
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.date-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #707eae;
+}
+
+.date-input {
+  padding: 8px 12px;
+  border: 1px solid #e0e5f2;
+  border-radius: 8px;
+  color: #2b3674;
+  outline: none;
+  font-family: inherit;
+  transition: border 0.2s;
+}
+
+.date-input:focus {
+  border-color: #4318ff;
+}
+
+.btn-clear {
+  background-color: #ffe5e5;
+  color: #d32f2f;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-clear:hover {
+  background-color: #ffcdd2;
+}
+/* --- HEADER & FILTER STYLES END --- */
+
+/* Table Styling */
+.table-container {
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 800px;
+}
+
+.history-table thead tr {
+  background-color: #f8f9fa;
+}
+
+.history-table th {
+  text-align: left;
+  padding: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e9edf7;
+}
+
+.history-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.history-table tbody tr:hover {
+  background-color: #f8faff;
+}
+
+.history-table td {
+  padding: 16px;
+  font-size: 14px;
+  color: #2b3674;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+/* Specific Column Styling */
+.item-name {
+  font-weight: 600;
+  color: #1b2559;
+}
+
+.qty-badge {
+  background-color: #e6f7ff;
+  color: #0091ff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-block;
+}
+
+.date-text {
+  color: #8f9bba;
+  font-size: 13px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #a3aed0;
+  font-style: italic;
+}
+
+.clickable-row:hover {
+  background-color: #f8fafc;
+  cursor: pointer;
+}
+
+.qty-badge {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+.item-name-bold {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.btn-view {
+  background: none;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}/* Container for Icon + Input */
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 250px;
+}
+
+/* The Search Icon (SVG) */
+.search-icon {
+    position: absolute;
+    left: 12px;
+    width: 18px;
+    height: 18px;
+    color: #94a3b8; /* Subtle gray */
+    pointer-events: none;
+}
+
+/* The Input Field */
+.search-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px 0 40px; /* Extra padding on left for the icon */
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+/* Hover State */
+.search-input:hover {
+    border-color: #cbd5e1;
+}
+
+/* Focus State (Professional Blue Glow) */
+.search-input:focus {
+    background-color: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Placeholder text style */
+.search-input::placeholder {
+    color: #94a3b8;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Assumes 2 columns */
+    gap: 20px;
+}
+
+/* Prevent the last item from expanding to fill the row if it's alone */
+.input-group:last-child {
+    grid-column: span 1; /* Force it to stay in one column only */
+    max-width: 250px;   /* Constrain the width */
+}
+
+/* Responsive adjustment for Mobile */
+@media (max-width: 768px) {
+    .search-wrapper {
+        width: 100%;
+    }
+}
