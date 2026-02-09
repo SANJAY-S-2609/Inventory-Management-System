@@ -15,6 +15,8 @@ function ShowAddedItems() {
   const [stockThreshold, setStockThreshold] = useState("");
 
   // --- Security States ---
+  const [showNewPassModal, setShowNewPassModal] = useState(false); // UI state for Reset
+  const [newPasswordInput, setNewPasswordInput] = useState("");   // Input for Reset
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [pendingItemId, setPendingItemId] = useState(null);
@@ -55,12 +57,60 @@ function ShowAddedItems() {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = () => {
-    if (passwordInput === "admin123") { // Replace with your logic
-      router.push(`/dashboard/Additem?itemId=${pendingItemId}`);
-      setShowPasswordModal(false);
+// 1. Verify Password against Database (Login)
+  const handlePasswordSubmit = async () => {
+    try {
+      const res = await fetch("/api/Admin-security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+
+      if (res.ok) {
+        router.push(`/dashboard/Additem?itemId=${pendingItemId}`);
+        setShowPasswordModal(false);
+        setPasswordInput("");
+      } else {
+        alert("Invalid Admin Password. Try 'admin123' if first time.");
+      }
+    } catch (err) {
+      alert("Security server error");
+    }
+  };
+
+  // 2. Verify OTP then Show Reset UI
+  const verifyOtp = () => {
+    if (timer === 0) return alert("OTP Expired!");
+    
+    if (otpInput.join("") === serverOtp) {
+      setShowOtpModal(false);
+      setShowNewPassModal(true); // Switch to the Reset Password Modal
     } else {
-      alert("Invalid Password");
+      alert("Incorrect OTP");
+    }
+  };
+
+  // 3. Update Database with New Password (Reset)
+  const handleUpdatePassword = async () => {
+    if (!newPasswordInput) return alert("Please enter a new password");
+
+    try {
+      const res = await fetch("/api/Admin-security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: newPasswordInput, isUpdate: true }),
+      });
+
+      if (res.ok) {
+        alert("Password updated in database successfully!");
+        setShowNewPassModal(false);
+        setShowPasswordModal(true); // Return to Login modal
+        setNewPasswordInput("");
+      } else {
+        alert("Failed to update database");
+      }
+    } catch (err) {
+      alert("Database connection error");
     }
   };
 
@@ -92,17 +142,7 @@ function ShowAddedItems() {
     if (element.value !== "" && index < 5) otpRefs.current[index + 1].focus();
   };
 
-  const verifyOtp = () => {
-    if (timer === 0) {
-      alert("OTP Expired! Please resend.");
-      return;
-    }
-    if (otpInput.join("") === serverOtp) {
-      router.push(`/dashboard/Additem?itemId=${pendingItemId}`);
-    } else {
-      alert("Incorrect OTP");
-    }
-  };
+
 
   // --- ORIGINAL FILTER & DOWNLOAD LOGIC ---
   const uniqueCategories = ["All", ...new Set(items.map((item) => item.category))];
@@ -183,6 +223,28 @@ function ShowAddedItems() {
               <button className="modal-btn-forgot" onClick={generateAndSendOtp}>Resend Code</button>
             )}
             <button className="modal-btn-close" onClick={() => setShowOtpModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
+      {/* --- MODAL 3: RESET PASSWORD UI --- */}
+      {showNewPassModal && (
+        <div className="custom-modal-overlay">
+          <div className="custom-modal">
+            <h3>Reset Admin Password</h3>
+            <p>Verification successful. Set your new password below:</p>
+            <input 
+              type="password" 
+              placeholder="Enter New Password" 
+              className="modal-input"
+              value={newPasswordInput}
+              onChange={(e) => setNewPasswordInput(e.target.value)}
+            />
+            <button className="modal-btn-primary" onClick={handleUpdatePassword}>
+              Update & Save Password
+            </button>
+            <button className="modal-btn-close" onClick={() => setShowNewPassModal(false)}>
+              Cancel
+            </button>
           </div>
         </div>
       )}

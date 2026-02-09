@@ -1,9 +1,10 @@
+
 export const runtime = "nodejs";
 
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import AddItems from "../../../models/ItemDetails";
-import ProductMaster from "../../../models/ProductMaster"; // <--- NEW IMPORT
+import ProductMaster from "../../../models/ProductMaster";
 import { connectDB } from "../../../lib/db";
 import PurchaseHistory from "../../../models/PurchaseHistory";
 
@@ -30,14 +31,17 @@ export async function POST(request) {
       category,
       minOrderLevel,
       gstPercentage,
-      purchaseDate, 
+      purchaseDate, // 👈 Extracted from frontend body
     } = body;
 
     // Validation
     if (!name || !quantity || !unit || !perItemPrice) {
       return NextResponse.json(
-        { message: "Required fields missing (Name, Qty, Unit, or Price per item)" },
-        { status: 400 }
+        {
+          message:
+            "Required fields missing (Name, Qty, Unit, or Price per item)",
+        },
+        { status: 400 },
       );
     }
 
@@ -64,7 +68,7 @@ export async function POST(request) {
     if (totalAmount < 0) {
       return NextResponse.json(
         { message: "Invalid discount values" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -87,8 +91,8 @@ export async function POST(request) {
       category,
       minOrderLevel: Number(minOrderLevel),
       gstPercentage: Number(gstPercentage),
-      Date: purchaseDate ? new Date(purchaseDate) : Date.now(),
-      
+      // 👈 Map frontend 'purchaseDate' to Schema 'Date'
+      Date: purchaseDate ? new Date(purchaseDate) : new Date(),
     };
 
     console.log("Saving Item with Date:", itemData.Date);
@@ -98,13 +102,13 @@ export async function POST(request) {
 
     return NextResponse.json(
       { message: "Item added successfully", data: itemData },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("POST Error:", error);
     return NextResponse.json(
       { message: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -118,41 +122,37 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get("itemId");
-
     const searchHsn = searchParams.get("searchHsn");
     const searchName = searchParams.get("searchName");
     const getLatestHistory = searchParams.get("getLatestHistory");
 
-    // 1. Get History specific item (for filling details like price/min level)
+    // 1. Get Latest History for an item (pre-filling details)
     if (getLatestHistory) {
       const latestEntry = await AddItems.findOne({ itemId: getLatestHistory })
         .sort({ Date: -1 })
         .lean();
       return NextResponse.json(latestEntry || {});
     }
-    
+
     // 2. Get Single Item for Editing
     if (itemId) {
-      const item = await AddItems.findById( itemId ).lean();
-      if(item) {
-          item.purchaseDate = item.Date; 
+      const item = await AddItems.findById(itemId).lean();
+      if (item) {
+        // 👈 Map DB 'Date' back to 'purchaseDate' so the frontend form displays it correctly
+        item.purchaseDate = item.Date;
       }
       return NextResponse.json(item, { status: 200 });
     }
 
-    // 👇👇 CHANGED SECTION: SEARCH BOTH SOURCES 👇👇
+    // 3. Search Suggestions (HSN or Name)
     if (searchHsn || searchName) {
-      
-      // A. Query for ProductMaster (Excel List) - HSN is String
       let masterQuery = {};
       if (searchHsn) masterQuery.hsnSac = { $regex: searchHsn, $options: "i" };
       if (searchName) masterQuery.name = { $regex: searchName, $options: "i" };
 
-      // B. Query for AddItems (History List) - HSN is Number
       let historyQuery = {};
       if (searchName) historyQuery.name = { $regex: searchName, $options: "i" };
       if (searchHsn) {
-        // Need $expr to match String input against Number field in DB
         historyQuery = {
           $expr: {
             $regexMatch: {
@@ -164,34 +164,27 @@ export async function GET(request) {
         };
       }
 
-      // C. Run both queries in parallel
       const [masterResults, historyResults] = await Promise.all([
         ProductMaster.find(masterQuery).limit(10).lean(),
-        AddItems.find(historyQuery).limit(10).lean()
+        AddItems.find(historyQuery).limit(10).lean(),
       ]);
 
-      // D. Combine results (History first, then Master)
       const combinedResults = [...historyResults, ...masterResults];
-
-      // E. Remove Duplicates based on Name
       const uniqueResults = [];
       const seenNames = new Set();
 
       for (const item of combinedResults) {
         const normalizedName = item.name.trim().toLowerCase();
-        if (item.hsnSac) {
-            item.hsnSac = String(item.hsnSac);
-        }
+        if (item.hsnSac) item.hsnSac = String(item.hsnSac);
+
         if (!seenNames.has(normalizedName)) {
           seenNames.add(normalizedName);
           uniqueResults.push(item);
         }
       }
 
-      // Return top 15 matches
       return NextResponse.json(uniqueResults.slice(0, 15), { status: 200 });
     }
-    // 👆👆 CHANGED SECTION END 👆👆
 
     // 4. Default: Fetch All Items
     const items = await AddItems.find().sort({ createdAt: -1 });
@@ -200,7 +193,7 @@ export async function GET(request) {
     console.error("GET Error", error);
     return NextResponse.json(
       { message: "Failed to fetch items" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -212,13 +205,13 @@ export async function PUT(request) {
   try {
     await connectDB();
     const body = await request.json();
-    
+
     const { recordId, ...updateData } = body;
 
     if (!recordId) {
       return NextResponse.json(
         { message: "Record ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -235,21 +228,24 @@ export async function PUT(request) {
       ...updateData,
       quantity: Number(updateData.quantity),
       perItemPrice: pip,
-      gstPercentage: Number(updateData.gstPercentage),
+      gstPercentage: Number(updateData.gstPercentage), // 👈 Explicitly ensure GST is updated
       originalPrice: Number(op.toFixed(2)),
       discountPercentage: dperc,
       discountPrice: Number(finalDiscountPrice.toFixed(2)),
       totalAmount: Number(totalAmount.toFixed(2)),
       hsnSac: Number(updateData.hsnSac),
-      companyName: updateData.companyName.trim(),
-      companyNumber: updateData.companyNumber.trim(),
-      Date: updateData.purchaseDate ? new Date(updateData.purchaseDate) : undefined,
+      companyName: updateData.companyName?.trim(),
+      companyNumber: updateData.companyNumber?.trim(),
+      // 👈 Update the Date if purchaseDate is provided in the PUT request
+      Date: updateData.purchaseDate
+        ? new Date(updateData.purchaseDate)
+        : undefined,
     };
 
     const updatedItem = await AddItems.findByIdAndUpdate(
-       recordId ,
+      recordId,
       { $set: cleanedData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     );
 
     if (!updatedItem) {
@@ -257,10 +253,9 @@ export async function PUT(request) {
     }
 
     /* ------------------------------------------------------------------
-       RECALCULATE INVOICES
+       RECALCULATE INVOICES (Purchase History Sync)
      ------------------------------------------------------------------ */
-    const customUuid = updatedItem.itemId; 
-
+    const customUuid = updatedItem.itemId;
     const relatedInvoices = await PurchaseHistory.find({ itemIds: customUuid });
 
     for (const invoice of relatedInvoices) {
@@ -270,7 +265,7 @@ export async function PUT(request) {
 
       const newInvoiceTotalBeforeTax = allItemsInThisInvoice.reduce(
         (sum, item) => sum + Number(item.totalAmount),
-        0
+        0,
       );
 
       const newCgst =
@@ -290,19 +285,19 @@ export async function PUT(request) {
             totalTaxAmount: Number(newTotalTax.toFixed(2)),
             totalAmountAfterTax: Number(newTotalAfterTax.toFixed(2)),
           },
-        }
+        },
       );
     }
 
     return NextResponse.json(
       { message: "Item updated successfully", data: updatedItem },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("PUT ERROR:", error);
     return NextResponse.json(
       { message: error.message || "Failed to update item" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

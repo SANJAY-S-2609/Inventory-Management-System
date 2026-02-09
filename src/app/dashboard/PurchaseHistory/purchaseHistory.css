@@ -40,8 +40,11 @@
 /* Actions */
 .purchase-header-actions {
     display: flex;
+    background-color: #f8fafc;
+
     align-items: center;
     gap: 15px;
+    
 }
 
 .purchase-search-input {
@@ -178,8 +181,8 @@
 }
 
 .edit-btn {
-  background-color: #f3f4f6;
-  color: #2563eb;
+  background-color: #6366f1;
+  color:white;
   border: 1px solid #d1d5db;
   padding: 6px 12px;
   border-radius: 6px;
@@ -189,12 +192,7 @@
   font-size: 0.85rem;
 }
 
-.edit-btn:hover {
-  background-color: #2563eb;
-  color: white;
-  border-color: #2563eb;
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-}
+
 
 /* Ensure the table doesn't feel cramped with the new column */
 .modern-purchase-table th:last-child {
@@ -216,6 +214,7 @@
     .purchase-header-actions {
         width: 100%;
         display: flex;
+        background-color: #f8fafc;
     }
 
     /* 3. Adjust Search Input */

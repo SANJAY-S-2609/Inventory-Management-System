@@ -10,8 +10,6 @@ function Additem() {
   const itemId = searchParams.get("itemId");
   const newSupplierIdFromUrl = searchParams.get("newSupplierId"); // Get ID back from redirect
 
-  // This replaces the "Fetch Suggestions" part of your old handleChange
-
   // State to track field errors
   const [errors, setErrors] = useState({});
 
@@ -43,36 +41,41 @@ function Additem() {
     // Initialize with today's date
     purchaseDate: getTodayDate(),
   });
-
+  // This handles fetching suggestions with a 300ms delay (Debounce)
   useEffect(() => {
-  const delayDebounceFn = setTimeout(async () => {
-    // 1. HSN Suggestions
-    if (formData.hsnSac.length > 2) {
-      try {
-        const res = await fetch(`/api/AddItems?searchHsn=${formData.hsnSac}`);
-        const data = await res.json();
-        setHsnSuggestions(data);
-      } catch (err) { console.error(err); }
-    } else {
-      setHsnSuggestions([]);
-    }
+    const delayDebounceFn = setTimeout(async () => {
+      // 1. HSN Suggestions
+      if (formData.hsnSac.length > 2) {
+        try {
+          const res = await fetch(`/api/AddItems?searchHsn=${formData.hsnSac}`);
+          const data = await res.json();
+          setHsnSuggestions(data);
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        setHsnSuggestions([]);
+      }
 
-    // 2. Name Suggestions
-    if (formData.name.length > 2) {
-      try {
-        const res = await fetch(
-          `/api/AddItems?searchName=${formData.name}&searchHsn=${formData.hsnSac}`
-        );
-        const data = await res.json();
-        setNameSuggestions(data);
-      } catch (err) { console.error(err); }
-    } else {
-      setNameSuggestions([]);
-    }
-  }, 100); // 300ms delay: Waits for user to stop typing before calling DB
+      // 2. Name Suggestions
+      if (formData.name.length > 2) {
+        try {
+          const res = await fetch(
+            `/api/AddItems?searchName=${formData.name}&searchHsn=${formData.hsnSac}`,
+          );
+          const data = await res.json();
+          setNameSuggestions(data);
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        setNameSuggestions([]);
+      }
+    }, 300); // 300ms delay
 
-  return () => clearTimeout(delayDebounceFn);
-}, [formData.hsnSac, formData.name]);
+    return () => clearTimeout(delayDebounceFn);
+  }, [formData.hsnSac, formData.name]);
+
   // 1. SAFE EFFECT: Handle returning from Add Supplier
   useEffect(() => {
     if (newSupplierIdFromUrl && supplierList?.length > 0) {
@@ -81,7 +84,7 @@ function Additem() {
         try {
           const parsedDraft = JSON.parse(draft);
           const newSup = supplierList.find(
-            (s) => s?.supplierId === newSupplierIdFromUrl
+            (s) => s?.supplierId === newSupplierIdFromUrl,
           );
 
           if (newSup) {
@@ -89,7 +92,8 @@ function Additem() {
             const supplierData = {
               supplierId: newSup.supplierId,
               companyName: newSup.companyName,
-              companyNumber: newSup.companyNumber || newSup.supplierMobileNumber,
+              companyNumber:
+                newSup.companyNumber || newSup.supplierMobileNumber,
             };
 
             // Update the form: Draft + New Supplier info
@@ -105,7 +109,7 @@ function Additem() {
               JSON.stringify({
                 ...supplierData,
                 purchaseDate: parsedDraft.purchaseDate || getTodayDate(),
-              })
+              }),
             );
 
             // Clean up
@@ -183,7 +187,7 @@ function Additem() {
       }
 
       const pendingBatch = JSON.parse(
-        localStorage.getItem("pending_batch_items") || "[]"
+        localStorage.getItem("pending_batch_items") || "[]",
       );
       const isBatchInProgress = pendingBatch.length > 0;
 
@@ -316,7 +320,7 @@ function Additem() {
   const handleNameFocus = async () => {
     if (formData.hsnSac.length > 2) {
       const res = await fetch(
-        `/api/AddItems?searchName=${formData.name}&searchHsn=${formData.hsnSac}`
+        `/api/AddItems?searchName=${formData.name}&searchHsn=${formData.hsnSac}`,
       );
       const data = await res.json();
       setNameSuggestions(data);
@@ -324,106 +328,117 @@ function Additem() {
   };
 
   const handleChange = (e) => {
-  const { name, value } = e.target;
-  let newErrors = { ...errors };
-
-  // 1. Reset suggestions/selection state instantly
-  if (name === "name" || name === "hsnSac") {
-    setSelectedItemId(null);
-  }
-
-  // 2. --- VALIDATION LOGIC (KEPT EXACTLY SAME) ---
-  if (name === "quantity") {
-    if (value && isNaN(value)) {
-      newErrors.quantity = "There should only be numbers";
-    } else {
-      delete newErrors.quantity;
-    }
-  }
-
-  if (name === "minOrderLevel") {
-    if (value && isNaN(value)) {
-      newErrors.minOrderLevel = "There should only be numbers";
-    } else {
-      delete newErrors.minOrderLevel;
-    }
-  }
-
-  if (name === "perItemPrice") {
-    if (value && isNaN(value)) {
-      newErrors.perItemPrice = "There should only be numbers";
-    } else {
-      delete newErrors.perItemPrice;
-    }
-  }
-
-  if (name === "discountPercentage") {
-    if (Number(value) > 100) {
-      newErrors.discountPercentage = "Do Not Exceed Above 100%";
-    } else {
-      delete newErrors.discountPercentage;
-    }
-  }
-
-  if (name === "gstPercentage") {
-    if (Number(value) > 100) {
-      newErrors.gstPercentage = "Do Not Exceed Above 100%";
-    } else if (Number(value) < 0) {
-      newErrors.gstPercentage = "GST Should Be Positive";
-    } else {
-      delete newErrors.gstPercentage;
-    }
-  }
-
-  setErrors(newErrors);
-
-  // Prevent input if value is too long for these specific fields
-  if ((name === "discountPercentage" || name === "gstPercentage") && value.length > 3) {
-    return;
-  }
-
-  // 3. --- LOCAL STORAGE SYNC ---
-  if (name === "purchaseDate" && formData.supplierId) {
-    localStorage.setItem(
-      "pending_supplier",
-      JSON.stringify({
-        supplierId: formData.supplierId,
-        companyName: formData.companyName,
-        companyNumber: formData.companyNumber,
-        purchaseDate: value,
-      })
-    );
-  }
-
-  // 4. --- DATA UPDATE & CALCULATION (KEPT EXACTLY SAME) ---
-  setFormData((prev) => {
-    let updatedData = { ...prev, [name]: value };
-
-    const qty = name === "quantity" ? Number(value) : Number(prev.quantity || 0);
-    const price = name === "perItemPrice" ? Number(value) : Number(prev.perItemPrice || 0);
-
-    const newOriginalPrice = qty * price;
-    updatedData.originalPrice = newOriginalPrice.toFixed(2);
-
-    const discountPercent = name === "discountPercentage" ? Number(value || 0) : Number(prev.discountPercentage || 0);
-    const gstPercent = name === "gstPercentage" ? Number(value || 0) : Number(prev.gstPercentage || 0);
-
-    if (newOriginalPrice > 0) {
-      const effectiveDiscount = Math.min(discountPercent, 100);
-      const discountAmount = (newOriginalPrice * effectiveDiscount) / 100;
-
-      updatedData.discountPrice = discountAmount.toFixed(2);
-      const taxableValue = newOriginalPrice - discountAmount;
-      const gstAmount = (taxableValue * gstPercent) / 100;
-      updatedData.totalAmount = (taxableValue + gstAmount).toFixed(2);
-    } else {
-      updatedData.discountPrice = "0.00";
-      updatedData.totalAmount = "0.00";
+    const { name, value } = e.target;
+    let newErrors = { ...errors };
+    
+    if (name === "name" || name === "hsnSac") {
+      setSelectedItemId(null);
     }
 
-    return updatedData;
-  });
-};
+    // --- VALIDATION LOGIC ---
+    if (name === "quantity") {
+      if (value && isNaN(value)) {
+        newErrors.quantity = "There should only be numbers";
+      } else {
+        delete newErrors.quantity;
+      }
+    }
+
+    if (name === "minOrderLevel") {
+      if (value && isNaN(value)) {
+        newErrors.minOrderLevel = "There should only be numbers";
+      } else {
+        delete newErrors.minOrderLevel;
+      }
+    }
+
+    if (name === "perItemPrice") {
+      if (value && isNaN(value)) {
+        newErrors.perItemPrice = "There should only be numbers";
+      } else {
+        delete newErrors.perItemPrice;
+      }
+    }
+
+    if (name === "discountPercentage") {
+      if (Number(value) > 100) {
+        newErrors.discountPercentage = "Do Not Exceed Above 100%";
+      } else {
+        delete newErrors.discountPercentage;
+      }
+    }
+
+    if (name === "gstPercentage") {
+      if (Number(value) > 100) {
+        newErrors.gstPercentage = "Do Not Exceed Above 100%";
+      } else if (Number(value) < 0) {
+        newErrors.gstPercentage = "GST Should Be Positive";
+      } else {
+        delete newErrors.gstPercentage;
+      }
+    }
+
+    setErrors(newErrors);
+    if (
+      (name === "discountPercentage" || name === "gstPercentage") &&
+      value.length > 2
+    ) {
+      return;
+    }
+
+    // If Date changes, update localStorage immediately if a supplier is already selected
+    if (name === "purchaseDate" && formData.supplierId) {
+      localStorage.setItem(
+        "pending_supplier",
+        JSON.stringify({
+          supplierId: formData.supplierId,
+          companyName: formData.companyName,
+          companyNumber: formData.companyNumber,
+          purchaseDate: value,
+        }),
+      );
+    }
+
+    // --- DATA UPDATE & CALCULATION ---
+    setFormData((prev) => {
+      let updatedData = { ...prev, [name]: value };
+
+      const qty =
+        name === "quantity" ? Number(value) : Number(prev.quantity || 0);
+      const price =
+        name === "perItemPrice"
+          ? Number(value)
+          : Number(prev.perItemPrice || 0);
+
+      const newOriginalPrice = qty * price;
+      updatedData.originalPrice = newOriginalPrice.toFixed(2);
+
+      const discountPercent =
+        name === "discountPercentage"
+          ? Number(value || 0)
+          : Number(prev.discountPercentage || 0);
+      const gstPercent =
+        name === "gstPercentage"
+          ? Number(value || 0)
+          : Number(prev.gstPercentage || 0);
+
+      if (newOriginalPrice > 0) {
+        const effectiveDiscount = Math.min(discountPercent, 100);
+        const discountAmount = (newOriginalPrice * effectiveDiscount) / 100;
+
+        updatedData.discountPrice = discountAmount.toFixed(2);
+        const taxableValue = newOriginalPrice - discountAmount;
+        const gstAmount = (taxableValue * gstPercent) / 100;
+        updatedData.totalAmount = (taxableValue + gstAmount).toFixed(2);
+      } else {
+        updatedData.discountPrice = "0.00";
+        updatedData.totalAmount = "0.00";
+      }
+
+      return updatedData;
+    });
+  };
+
   const handleSelectSuggestion = async (item) => {
     setFormData((prev) => ({
       ...prev,
@@ -505,7 +520,7 @@ function Additem() {
       };
 
       const currentList = JSON.parse(
-        localStorage.getItem("pending_batch_items") || "[]"
+        localStorage.getItem("pending_batch_items") || "[]",
       );
       currentList.push(tempEntry);
 
@@ -519,11 +534,11 @@ function Additem() {
           companyName: formData.companyName,
           companyNumber: formData.companyNumber,
           purchaseDate: formData.purchaseDate, // Save the date so it locks for next item
-        })
+        }),
       );
 
       alert(
-        "Item added to temporary list! You can now add one more item or click 'Stop Adding'. ✅"
+        "Item added to temporary list! You can now add one more item or click 'Stop Adding'. ✅",
       );
 
       // Reset form but KEEP Supplier and Date
@@ -553,7 +568,7 @@ function Additem() {
     JSON.parse(
       typeof window !== "undefined"
         ? localStorage.getItem("pending_batch_items") || "[]"
-        : "[]"
+        : "[]",
     ).length > 0;
 
   const blockKeys = (e) =>
@@ -654,11 +669,13 @@ function Additem() {
                   className="list-group position-absolute w-100 z-3 shadow-lg"
                   style={{ top: "100%", maxHeight: "200px", overflowY: "auto" }}
                 >
-                  {Array.from(new Set(nameSuggestions.map((item) => item.name)))
-                    .map((name) =>
-                      nameSuggestions.find((item) => item.name === name)
-                    )
-                    .map((item) => (
+                  {Array.from(
+                    new Set(nameSuggestions.map((item) => item.name)),
+                  ).map((itemName) => {
+                    const item = nameSuggestions.find(
+                      (i) => i.name === itemName,
+                    );
+                    return (
                       <li
                         key={item._id}
                         className="list-group-item list-group-item-action"
@@ -668,7 +685,8 @@ function Additem() {
                         {item.name}{" "}
                         <small className="text-muted">({item.category})</small>
                       </li>
-                    ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -953,7 +971,7 @@ function Additem() {
                 Stop Adding & View List (
                 {
                   JSON.parse(
-                    localStorage.getItem("pending_batch_items") || "[]"
+                    localStorage.getItem("pending_batch_items") || "[]",
                   ).length
                 }
                 )

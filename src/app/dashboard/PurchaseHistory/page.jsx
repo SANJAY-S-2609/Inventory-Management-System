@@ -14,6 +14,9 @@ function Purchase() {
   // --- SECURITY STATES ---
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showOtpModal, setShowOtpModal] = useState(false);
+  const [showNewPassModal, setShowNewPassModal] = useState(false);
+  const [newPasswordInput, setNewPasswordInput] = useState(""); // NEW STATE
+
   const [pendingPurchaseId, setPendingPurchaseId] = useState(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [otpInput, setOtpInput] = useState(new Array(6).fill(""));
@@ -65,15 +68,67 @@ function Purchase() {
     setShowPasswordModal(true);
   };
 
-  const handlePasswordSubmit = () => {
-    if (passwordInput === "admin123") { // Static password
-      router.push(`/dashboard/PurchaseHistory/Edit/${pendingPurchaseId}`);
-      setShowPasswordModal(false);
-      setPasswordInput("");
-    } else {
-      alert("Invalid Password");
+  const handlePasswordSubmit = async () => {
+    try {
+      const res = await fetch("/api/Admin-security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+      });
+
+      if (res.ok) {
+        router.push(`/dashboard/PurchaseHistory/Edit/${pendingPurchaseId}`);
+        setShowPasswordModal(false);
+        setPasswordInput("");
+      } else {
+        alert("Incorrect Admin Password");
+      }
+    } catch (err) {
+      alert("Error verifying password");
     }
   };
+
+  // 2. Verify OTP then Open New Password UI
+  const verifyOtp = () => {
+    if (timer === 0) {
+      alert("OTP Expired!");
+      return;
+    }
+    if (otpInput.join("") === serverOtp) {
+      setShowOtpModal(false);
+      setShowNewPassModal(true); // Open the new password modal
+    } else {
+      alert("Incorrect OTP");
+    }
+  };
+
+  // 3. Update Password in Database
+  const handleUpdatePassword = async () => {
+    if (!newPasswordInput) return alert("Please enter a new password");
+
+    try {
+      const res = await fetch("/api/Admin-security", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          newPassword: newPasswordInput, 
+          isUpdate: true 
+        }),
+      });
+
+      if (res.ok) {
+        alert("Password updated in database!");
+        setShowNewPassModal(false);
+        setShowPasswordModal(true); // Go back to login
+        setNewPasswordInput("");
+      } else {
+        alert("Failed to update database");
+      }
+    } catch (err) {
+      alert("Error updating password");
+    }
+  };
+
 
   const generateAndSendOtp = async () => {
     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -103,17 +158,17 @@ function Purchase() {
     if (element.value !== "" && index < 5) otpRefs.current[index + 1].focus();
   };
 
-  const verifyOtp = () => {
-    if (timer === 0) {
-      alert("OTP Expired! Please resend.");
-      return;
-    }
-    if (otpInput.join("") === serverOtp) {
-      router.push(`/dashboard/PurchaseHistory/Edit/${pendingPurchaseId}`);
-    } else {
-      alert("Incorrect OTP");
-    }
-  };
+  // const verifyOtp = () => {
+  //   if (timer === 0) {
+  //     alert("OTP Expired! Please resend.");
+  //     return;
+  //   }
+  //   if (otpInput.join("") === serverOtp) {
+  //     router.push(`/dashboard/PurchaseHistory/Edit/${pendingPurchaseId}`);
+  //   } else {
+  //     alert("Incorrect OTP");
+  //   }
+  // };
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -174,6 +229,23 @@ function Purchase() {
               <button className="security-btn-forgot" onClick={generateAndSendOtp}>Resend New Code</button>
             )}
             <button className="security-btn-close" onClick={() => setShowOtpModal(false)}>Close</button>
+          </div>
+        </div>
+      )}
+      {showNewPassModal && (
+        <div className="custom-security-overlay">
+          <div className="custom-security-modal">
+            <h3>Reset Admin Password</h3>
+            <p>OTP Verified. Please set your new password below.</p>
+            <input 
+              type="password" 
+              placeholder="Enter New Password" 
+              className="security-modal-input"
+              value={newPasswordInput}
+              onChange={(e) => setNewPasswordInput(e.target.value)}
+            />
+            <button className="security-btn-primary" onClick={handleUpdatePassword}>Update & Save Password</button>
+            <button className="security-btn-close" onClick={() => setShowNewPassModal(false)}>Cancel</button>
           </div>
         </div>
       )}
